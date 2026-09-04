@@ -1,4 +1,4 @@
-import { AppSettings, PropertyItem, TemplateMetadata } from "../types/propkit";
+import { AppSettings, PropertyItem } from "../types/propkit";
 
 export const NAVY = "#0B2A4A";
 export const TEAL = "#1B494E";
@@ -199,71 +199,5 @@ export const SAMPLE_PROPERTIES: PropertyItem[] = [
   },
 ];
 
-export const REAL_ESTATE_TEMPLATES: TemplateMetadata[] = [
-  {
-    id: "signature",
-    name: "Signature Brand",
-    subtitle: "High-impact Buy 'n' Move In agency template",
-    category: "brand",
-    tag: "Popular",
-    tagColor: "#F26522",
-    description: "Classic high-conversion layout with prominent bedroom block, dark location bar, white price box, and USD exchange strip.",
-    recommendedImages: 1,
-    features: ["Hero 980px photo", "Bold numeric bedroom block", "USD conversion strip", "Fixed footer contact"],
-  },
-  {
-    id: "editorial",
-    name: "Luxury Editorial",
-    subtitle: "Architectural magazine frosted card style",
-    category: "luxury",
-    tag: "Luxury",
-    tagColor: "#D97706",
-    description: "Full-bleed photography with a floating frosted glass card, elegant serif typography, gold accents, and refined specs.",
-    recommendedImages: 1,
-    features: ["Full-bleed photo", "Frosted glass card", "Editorial serif typography", "Subtle gold badges"],
-  },
-  {
-    id: "grid",
-    name: "Multi-Photo Showcase",
-    subtitle: "3-photo layout for exterior + interiors",
-    category: "multi-photo",
-    tag: "Multi-Image",
-    tagColor: "#3B82F6",
-    description: "Features 1 hero exterior photo plus 2 interior feature insets (living room & pool/kitchen) with feature pill badges.",
-    recommendedImages: 3,
-    features: ["1 Hero + 2 Inset photos", "Feature pill checklist", "Punchy price callout", "Balanced layout"],
-  },
-  {
-    id: "minimalist",
-    name: "Minimalist Studio",
-    subtitle: "Clean Nordic architectural gallery layout",
-    category: "minimalist",
-    tag: "Clean",
-    tagColor: "#10B981",
-    description: "Framed photo with generous white margins, modern minimalist typography, and 4 clean specification columns.",
-    recommendedImages: 1,
-    features: ["Gallery white border", "Monochrome minimalism", "Structured spec grid", "High aesthetic appeal"],
-  },
-  {
-    id: "urgent",
-    name: "Just Listed / Hot Deal",
-    subtitle: "High-energy commercial urgency layout",
-    category: "impact",
-    tag: "High Impact",
-    tagColor: "#EF4444",
-    description: "Features a bold diagonal 'JUST LISTED' banner, bright orange price badge, and direct WhatsApp contact ribbon.",
-    recommendedImages: 1,
-    features: ["Diagonal 'JUST LISTED' ribbon", "Instant WhatsApp action", "High contrast price badge", "Urgency callouts"],
-  },
-  {
-    id: "waterfront",
-    name: "Waterfront & Penthouse",
-    subtitle: "Deep oceanic panoramic luxury theme",
-    category: "luxury",
-    tag: "Exclusive",
-    tagColor: "#0EA5E9",
-    description: "Deep oceanic gradient framing with metallic cyan accents, floor level indicator, and luxury amenities checklist.",
-    recommendedImages: 1,
-    features: ["Oceanic gradient", "Metallic cyan accents", "Floor & view callout", "Waterfront amenities"],
-  },
-];
+export const BMI_TEMPLATE_NAME = "BMI Template";
+

@@ -17,8 +17,6 @@ export function TopBar({ activeView, onOpenSettings, onToggleMobileMenu }: TopBa
         return "P R O P K I T   /   D A S H B O A R D";
       case "new":
         return "P R O P K I T   /   N E W";
-      case "templates":
-        return "P R O P K I T   /   T E M P L A T E S";
       case "history":
         return "P R O P K I T   /   H I S T O R Y";
       case "review":

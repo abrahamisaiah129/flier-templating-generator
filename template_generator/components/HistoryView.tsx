@@ -70,7 +70,7 @@ export function HistoryView({
             <button
               type="button"
               onClick={() => setFilterMenuOpen(!filterMenuOpen)}
-              className="px-4 py-1.5 rounded-lg bg-[#1B494E] hover:bg-[#14383C] text-white text-xs font-bold tracking-wider uppercase transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-4 py-1.5 rounded-lg bg-[#1B494E] hover:bg-[#14383C] text-white text-xs font-bold tracking-wider uppercase transition-transform duration-150 ease-out active:scale-[0.98] cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               <Filter size={12} />
               <span>{statusFilter === "ALL" ? "Filter" : statusFilter}</span>
@@ -106,7 +106,7 @@ export function HistoryView({
         {/* Quick New Property button */}
         <button
           onClick={onNewProperty}
-          className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer flex-shrink-0"
+          className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-transform duration-150 ease-out active:scale-[0.98] cursor-pointer flex-shrink-0"
         >
           <PlusCircle size={16} />
           <span>New Property</span>

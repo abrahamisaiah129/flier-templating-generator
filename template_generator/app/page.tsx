@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ActiveView, AppSettings, PropertyData, PropertyItem, UploadedImage, TemplateId } from "../types/propkit";
+import { ActiveView, AppSettings, PropertyData, PropertyItem, UploadedImage } from "../types/propkit";
 import {
   getStoredProperties,
   getStoredSettings,
@@ -13,7 +13,6 @@ import { extractDetailsLocally } from "../utils/extractor";
 import { Sidebar } from "../components/Sidebar";
 import { TopBar } from "../components/TopBar";
 import { NewPropertyView } from "../components/NewPropertyView";
-import { TemplatesView } from "../components/TemplatesView";
 import { HistoryView } from "../components/HistoryView";
 import { DashboardView } from "../components/DashboardView";
 import { ReviewAndKitView } from "../components/ReviewAndKitView";
@@ -22,7 +21,6 @@ import { DEFAULT_SETTINGS } from "../utils/constants";
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ActiveView>("new");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<TemplateId>("signature");
   const [properties, setProperties] = useState<PropertyItem[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -102,9 +100,6 @@ export default function Home() {
     setCurrentPrimaryId(prop.primaryId || prop.images?.[0]?.id || null);
     setCurrentBriefText(prop.briefText);
     setCurrentBriefUrl(prop.briefUrl || "");
-    if (prop.templateId) {
-      setSelectedTemplateId(prop.templateId);
-    }
     setExistingId(prop.id);
     setExistingCaption(prop.caption);
     setActiveView("kit");
@@ -156,15 +151,6 @@ export default function Home() {
             />
           )}
 
-          {activeView === "templates" && (
-            <TemplatesView
-              onSelectTemplate={(tplId) => {
-                setSelectedTemplateId(tplId);
-                setActiveView("new");
-              }}
-            />
-          )}
-
           {activeView === "history" && (
             <HistoryView
               properties={properties}
@@ -185,7 +171,6 @@ export default function Home() {
               briefUrl={currentBriefUrl}
               existingId={existingId}
               existingCaption={existingCaption}
-              initialTemplateId={selectedTemplateId}
               onSaveProperty={handleSaveProperty}
               onBackToNew={() => setActiveView("new")}
               onDone={() => setActiveView("dashboard")}

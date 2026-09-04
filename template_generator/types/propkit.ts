@@ -28,7 +28,7 @@ export interface PropertyItem {
   createdAt: string;
   briefText: string;
   briefUrl?: string;
-  templateId?: TemplateId;
+  templateId?: string;
 }
 
 export interface AppSettings {
@@ -38,24 +38,4 @@ export interface AppSettings {
   anthropicApiKey?: string;
 }
 
-export type ActiveView = "dashboard" | "new" | "templates" | "history" | "review" | "kit";
-
-export type TemplateId =
-  | "signature"
-  | "editorial"
-  | "grid"
-  | "minimalist"
-  | "urgent"
-  | "waterfront";
-
-export interface TemplateMetadata {
-  id: TemplateId;
-  name: string;
-  subtitle: string;
-  category: "all" | "brand" | "luxury" | "multi-photo" | "minimalist" | "impact";
-  tag: string;
-  tagColor: string;
-  description: string;
-  recommendedImages: number;
-  features: string[];
-}
+export type ActiveView = "dashboard" | "new" | "history" | "review" | "kit";

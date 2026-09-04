@@ -9,12 +9,11 @@ import {
   Sparkles,
   Loader2,
   CheckCircle2,
-  Palette,
   Layers,
 } from "lucide-react";
-import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId } from "../types/propkit";
+import { PropertyData, AppSettings, UploadedImage, PropertyItem } from "../types/propkit";
 import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
-import { EMPTY_FIELD, FLIER_THEMES, REAL_ESTATE_TEMPLATES } from "../utils/constants";
+import { EMPTY_FIELD } from "../utils/constants";
 import { generateCaption } from "../utils/extractor";
 
 interface ReviewAndKitViewProps {
@@ -27,7 +26,6 @@ interface ReviewAndKitViewProps {
   briefUrl?: string;
   existingId?: string;
   existingCaption?: string;
-  initialTemplateId?: TemplateId;
   onSaveProperty: (property: PropertyItem) => void;
   onBackToNew: () => void;
   onDone: () => void;
@@ -47,7 +45,6 @@ export function ReviewAndKitView({
   briefUrl = "",
   existingId,
   existingCaption,
-  initialTemplateId = "signature",
   onSaveProperty,
   onBackToNew,
   onDone,
@@ -57,8 +54,6 @@ export function ReviewAndKitView({
   const [caption, setCaption] = useState<string>(
     existingCaption || generateCaption(initialData, settings.captionTemplate, settings)
   );
-  const [templateId, setTemplateId] = useState<TemplateId>(initialTemplateId);
-  const [themeId, setThemeId] = useState<string>("signature");
   const [exportScale, setExportScale] = useState<number>(1);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -102,7 +97,7 @@ export function ReviewAndKitView({
       createdAt: new Date().toISOString(),
       briefText,
       briefUrl,
-      templateId,
+      templateId: "bmi",
     };
 
     onSaveProperty(item);
@@ -119,7 +114,7 @@ export function ReviewAndKitView({
       const a = document.createElement("a");
       a.href = url;
       const scaleSuffix = exportScale > 1 ? `@${exportScale}x-HD` : "";
-      a.download = `${(data.propertyTitle || "property-flyer")
+      a.download = `${(data.propertyTitle || "bmi-property-flyer")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")}${scaleSuffix}.png`;
       a.click();
@@ -142,7 +137,7 @@ export function ReviewAndKitView({
         try {
           await navigator.share({
             files: [file],
-            title: data.propertyTitle || "Property Creative",
+            title: data.propertyTitle || "BMI Property Creative",
             text: caption,
           });
           return;
@@ -171,7 +166,7 @@ export function ReviewAndKitView({
           <button
             type="button"
             onClick={step === "kit" ? () => setStep("review") : onBackToNew}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#1B494E] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#1B494E] transition-colors cursor-pointer active:scale-[0.98]"
           >
             <ChevronLeft size={16} />
             <span>{step === "kit" ? "Back to Editor" : "Back to Brief"}</span>
@@ -186,7 +181,7 @@ export function ReviewAndKitView({
           <button
             type="button"
             onClick={onDone}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#1B494E] text-xs font-bold transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#1B494E] text-xs font-bold transition-all duration-150 cursor-pointer active:scale-[0.98]"
           >
             Done · Back to Dashboard
           </button>
@@ -196,50 +191,6 @@ export function ReviewAndKitView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN: Controls or Kit Details */}
         <div className="lg:col-span-7 space-y-6">
-          {/* THEME SELECTOR CARD */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-3">
-              <Palette size={16} className="text-[#1B494E]" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-[#1B494E]">
-                Template Theme Palette
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {Object.values(FLIER_THEMES).map((t) => {
-                const isActive = themeId === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setThemeId(t.id)}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      isActive
-                        ? "border-[#1B494E] ring-2 ring-[#1B494E]/20 bg-slate-50/80 shadow-xs"
-                        : "border-slate-200 hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span
-                        className="w-4 h-4 rounded-full shadow-xs"
-                        style={{ backgroundColor: t.primary }}
-                      />
-                      <span
-                        className="w-4 h-4 rounded-full shadow-xs"
-                        style={{ backgroundColor: t.accent }}
-                      />
-                    </div>
-                    <span className="text-xs font-bold text-slate-800 leading-tight">
-                      {t.name.split(" ")[0]}
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      {t.name.split(" ").slice(1).join(" ")}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* STEP 1: REVIEW FIELDS */}
           {step === "review" && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
@@ -373,9 +324,9 @@ export function ReviewAndKitView({
                       key={opt.label}
                       type="button"
                       onClick={() => updateField("furnished", opt.value)}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition-transform duration-150 ease-out cursor-pointer active:scale-[0.98] ${
                         data.furnished === opt.value
-                          ? "bg-[#F26522] border-[#F26522] text-white"
+                          ? "bg-[#F26522] border-[#F26522] text-white shadow-xs"
                           : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
@@ -411,7 +362,7 @@ export function ReviewAndKitView({
                 <button
                   type="button"
                   onClick={onBackToNew}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-100 transition-transform duration-150 ease-out cursor-pointer active:scale-[0.98]"
                 >
                   Back
                 </button>
@@ -419,7 +370,7 @@ export function ReviewAndKitView({
                   type="button"
                   onClick={handleConfirmGenerate}
                   disabled={generating}
-                  className="px-6 py-3 rounded-xl bg-[#1B494E] hover:bg-[#14383C] text-white font-bold text-sm flex items-center gap-2 shadow-md cursor-pointer transition-all disabled:opacity-50"
+                  className="px-6 py-3 rounded-xl bg-[#1B494E] hover:bg-[#14383C] text-white font-bold text-sm flex items-center gap-2 shadow-md cursor-pointer transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50"
                 >
                   {generating ? (
                     <>
@@ -479,7 +430,7 @@ export function ReviewAndKitView({
                   <button
                     onClick={handleDownloadPng}
                     disabled={downloading}
-                    className="flex-1 py-3.5 px-5 rounded-xl bg-[#1B494E] hover:bg-[#14383C] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md shadow-[#1B494E]/20 transition-all cursor-pointer disabled:opacity-50"
+                    className="flex-1 py-3.5 px-5 rounded-xl bg-[#1B494E] hover:bg-[#14383C] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md shadow-[#1B494E]/20 transition-transform duration-150 ease-out cursor-pointer active:scale-[0.98] disabled:opacity-50"
                   >
                     <Download size={16} />
                     <span>
@@ -490,7 +441,7 @@ export function ReviewAndKitView({
                   </button>
                   <button
                     onClick={handleShare}
-                    className="py-3.5 px-6 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md shadow-orange-600/20 transition-all cursor-pointer"
+                    className="py-3.5 px-6 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md shadow-orange-600/20 transition-transform duration-150 ease-out cursor-pointer active:scale-[0.98]"
                   >
                     <Share2 size={16} />
                     <span>Share</span>
@@ -506,7 +457,7 @@ export function ReviewAndKitView({
                   </h3>
                   <button
                     onClick={handleCopyCaption}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#E6EEEE] hover:bg-[#1B494E] hover:text-white text-[#1B494E] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-lg bg-[#E6EEEE] hover:bg-[#1B494E] hover:text-white text-[#1B494E] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
                   >
                     {copied ? (
                       <>
@@ -548,31 +499,19 @@ export function ReviewAndKitView({
             </span>
           </div>
 
-          {/* Quick Template Switcher */}
-          <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              <span>Layout Template:</span>
-              <span className="text-[#F26522] font-extrabold">
-                {REAL_ESTATE_TEMPLATES.find((t) => t.id === templateId)?.name || "Signature Brand"}
-              </span>
+          {/* Figma BMI Template Badge */}
+          <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Active Layout:
+              </div>
+              <div className="text-xs font-extrabold text-[#1B494E]">
+                BMI Template (Figma Official)
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              {REAL_ESTATE_TEMPLATES.map((tpl) => (
-                <button
-                  key={tpl.id}
-                  type="button"
-                  onClick={() => setTemplateId(tpl.id)}
-                  className={`py-2 px-2.5 rounded-lg text-[11px] font-bold transition-all text-center truncate cursor-pointer ${
-                    templateId === tpl.id
-                      ? "bg-[#1B494E] text-white shadow-xs"
-                      : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
-                  }`}
-                  title={tpl.name}
-                >
-                  {tpl.name}
-                </button>
-              ))}
-            </div>
+            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold tracking-wide uppercase">
+              More Templates Coming Soon
+            </span>
           </div>
 
           <FlyerCanvas
@@ -580,9 +519,6 @@ export function ReviewAndKitView({
             settings={settings}
             svgRef={svgRef}
             primaryImage={primaryImage}
-            secondaryImages={images}
-            templateId={templateId}
-            themeId={themeId}
           />
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Home, PlusCircle, LayoutTemplate, Briefcase, X } from "lucide-react";
+import { Home, PlusCircle, Briefcase, X } from "lucide-react";
 import { ActiveView } from "../types/propkit";
 
 interface SidebarProps {
@@ -29,11 +29,6 @@ export function Sidebar({
       icon: PlusCircle,
     },
     {
-      id: "templates" as ActiveView,
-      label: "Templates",
-      icon: LayoutTemplate,
-    },
-    {
       id: "history" as ActiveView,
       label: "History",
       icon: Briefcase,
@@ -46,7 +41,7 @@ export function Sidebar({
       <div className="px-6 pt-8 pb-10 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span
-            className="text-3xl font-normal tracking-wide text-white"
+            className="text-3xl font-normal tracking-wide text-white select-none"
             style={{ fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic" }}
           >
             PropKit
@@ -58,7 +53,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer active:scale-95"
             title="Close menu"
           >
             <X size={20} />
@@ -83,7 +78,7 @@ export function Sidebar({
                   onCloseMobile();
                 }
               }}
-              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-150 text-left cursor-pointer ${
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-sm font-semibold text-left cursor-pointer transition-transform duration-150 ease-out active:scale-[0.98] ${
                 isActive
                   ? "bg-[#F26522] text-white shadow-md shadow-orange-950/20"
                   : "text-slate-200/90 hover:bg-white/10 hover:text-white"
