@@ -509,9 +509,6 @@ export function ReviewAndKitView({
                 BMI Template (Figma Official)
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold tracking-wide uppercase">
-              More Templates Coming Soon
-            </span>
           </div>
 
           <FlyerCanvas
