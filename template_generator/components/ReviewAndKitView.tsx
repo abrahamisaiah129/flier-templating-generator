@@ -10,10 +10,11 @@ import {
   Loader2,
   CheckCircle2,
   Layers,
+  Layout,
 } from "lucide-react";
-import { PropertyData, AppSettings, UploadedImage, PropertyItem } from "../types/propkit";
+import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId } from "../types/propkit";
 import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
-import { EMPTY_FIELD } from "../utils/constants";
+import { EMPTY_FIELD, TEMPLATES_CONFIG } from "../utils/constants";
 import { generateCaption } from "../utils/extractor";
 
 interface ReviewAndKitViewProps {
@@ -26,6 +27,7 @@ interface ReviewAndKitViewProps {
   briefUrl?: string;
   existingId?: string;
   existingCaption?: string;
+  initialTemplateId?: TemplateId;
   onSaveProperty: (property: PropertyItem) => void;
   onBackToNew: () => void;
   onDone: () => void;
@@ -45,12 +47,16 @@ export function ReviewAndKitView({
   briefUrl = "",
   existingId,
   existingCaption,
+  initialTemplateId,
   onSaveProperty,
   onBackToNew,
   onDone,
 }: ReviewAndKitViewProps) {
   const [step, setStep] = useState<"review" | "kit">(initialStep);
   const [data, setData] = useState<PropertyData>(initialData);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(
+    initialTemplateId || "bmi"
+  );
   const [caption, setCaption] = useState<string>(
     existingCaption || generateCaption(initialData, settings.captionTemplate, settings)
   );
@@ -97,7 +103,7 @@ export function ReviewAndKitView({
       createdAt: new Date().toISOString(),
       briefText,
       briefUrl,
-      templateId: "bmi",
+      templateId: selectedTemplate,
     };
 
     onSaveProperty(item);
@@ -114,9 +120,9 @@ export function ReviewAndKitView({
       const a = document.createElement("a");
       a.href = url;
       const scaleSuffix = exportScale > 1 ? `@${exportScale}x-HD` : "";
-      a.download = `${(data.propertyTitle || "bmi-property-flyer")
+      a.download = `${(data.propertyTitle || "property-flyer")
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")}${scaleSuffix}.png`;
+        .replace(/[^a-z0-9]+/g, "-")}-${selectedTemplate}${scaleSuffix}.png`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -499,15 +505,57 @@ export function ReviewAndKitView({
             </span>
           </div>
 
-          {/* Figma BMI Template Badge */}
-          <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Active Layout:
+          {/* 3-Template Selection Switcher */}
+          <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Layout size={14} className="text-[#1B494E]" />
+                <span className="text-[11px] font-black uppercase tracking-wider text-[#1B494E]">
+                  Choose Flyer Template
+                </span>
               </div>
-              <div className="text-xs font-extrabold text-[#1B494E]">
-                BMI Template (Figma Official)
-              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                {TEMPLATES_CONFIG.length} Templates
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {TEMPLATES_CONFIG.map((tmpl) => {
+                const isSelected = selectedTemplate === tmpl.id;
+                return (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    onClick={() => setSelectedTemplate(tmpl.id)}
+                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-transform duration-120 active:scale-[0.98] ${
+                      isSelected
+                        ? "border-[#1B494E] bg-[#1B494E]/5 ring-2 ring-[#1B494E]/20 shadow-xs"
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{
+                          backgroundColor:
+                            tmpl.accentColor === "#FFFFFF"
+                              ? tmpl.themeColor
+                              : tmpl.accentColor,
+                        }}
+                      />
+                      <span className="text-[9px] font-extrabold uppercase px-1 py-0.2 rounded bg-slate-100 text-slate-600">
+                        {tmpl.badge}
+                      </span>
+                    </div>
+                    <div className="text-xs font-extrabold text-[#1B494E] truncate">
+                      {tmpl.name}
+                    </div>
+                    <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
+                      {tmpl.description}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -516,6 +564,7 @@ export function ReviewAndKitView({
             settings={settings}
             svgRef={svgRef}
             primaryImage={primaryImage}
+            templateId={selectedTemplate}
           />
         </div>
       </div>

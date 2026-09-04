@@ -18,6 +18,8 @@ export interface UploadedImage {
   name: string;
 }
 
+export type TemplateId = "bmi" | "eko" | "enose";
+
 export interface PropertyItem {
   id: string;
   data: PropertyData;
@@ -28,7 +30,7 @@ export interface PropertyItem {
   createdAt: string;
   briefText: string;
   briefUrl?: string;
-  templateId?: string;
+  templateId?: TemplateId;
 }
 
 export interface AppSettings {

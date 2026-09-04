@@ -53,7 +53,7 @@ export function getStoredSettings(): AppSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch (e) {
+  } catch {
     return DEFAULT_SETTINGS;
   }
 }

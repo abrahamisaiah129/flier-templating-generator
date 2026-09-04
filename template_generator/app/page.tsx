@@ -1,7 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ActiveView, AppSettings, PropertyData, PropertyItem, UploadedImage } from "../types/propkit";
+import React, { useState } from "react";
+import {
+  ActiveView,
+  AppSettings,
+  PropertyData,
+  PropertyItem,
+  TemplateId,
+  UploadedImage,
+} from "../types/propkit";
 import {
   getStoredProperties,
   getStoredSettings,
@@ -21,8 +28,12 @@ import { DEFAULT_SETTINGS } from "../utils/constants";
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ActiveView>("new");
-  const [properties, setProperties] = useState<PropertyItem[]>([]);
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [properties, setProperties] = useState<PropertyItem[]>(() =>
+    typeof window !== "undefined" ? getStoredProperties() : []
+  );
+  const [settings, setSettings] = useState<AppSettings>(() =>
+    typeof window !== "undefined" ? getStoredSettings() : DEFAULT_SETTINGS
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -32,16 +43,11 @@ export default function Home() {
   const [currentReviewData, setCurrentReviewData] = useState<PropertyData | null>(null);
   const [currentImages, setCurrentImages] = useState<UploadedImage[]>([]);
   const [currentPrimaryId, setCurrentPrimaryId] = useState<string | null>(null);
+  const [currentTemplateId, setCurrentTemplateId] = useState<TemplateId | undefined>("bmi");
   const [currentBriefText, setCurrentBriefText] = useState<string>("");
   const [currentBriefUrl, setCurrentBriefUrl] = useState<string>("");
   const [existingId, setExistingId] = useState<string | undefined>(undefined);
   const [existingCaption, setExistingCaption] = useState<string | undefined>(undefined);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    setProperties(getStoredProperties());
-    setSettings(getStoredSettings());
-  }, []);
 
   const handleSaveSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
@@ -98,6 +104,7 @@ export default function Home() {
     setCurrentReviewData(prop.data);
     setCurrentImages(prop.images || []);
     setCurrentPrimaryId(prop.primaryId || prop.images?.[0]?.id || null);
+    setCurrentTemplateId(prop.templateId || "bmi");
     setCurrentBriefText(prop.briefText);
     setCurrentBriefUrl(prop.briefUrl || "");
     setExistingId(prop.id);
@@ -116,6 +123,7 @@ export default function Home() {
           if (view === "new") {
             setCurrentReviewData(null);
             setCurrentImages([]);
+            setCurrentTemplateId("bmi");
             setExistingId(undefined);
           }
         }}
@@ -171,6 +179,7 @@ export default function Home() {
               briefUrl={currentBriefUrl}
               existingId={existingId}
               existingCaption={existingCaption}
+              initialTemplateId={currentTemplateId}
               onSaveProperty={handleSaveProperty}
               onBackToNew={() => setActiveView("new")}
               onDone={() => setActiveView("dashboard")}

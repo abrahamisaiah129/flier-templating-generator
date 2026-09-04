@@ -1,4 +1,4 @@
-import { AppSettings, PropertyItem } from "../types/propkit";
+import { AppSettings, PropertyItem, TemplateId } from "../types/propkit";
 
 export const NAVY = "#0B2A4A";
 export const TEAL = "#1B494E";
@@ -200,4 +200,41 @@ export const SAMPLE_PROPERTIES: PropertyItem[] = [
 ];
 
 export const BMI_TEMPLATE_NAME = "BMI Template";
+
+export interface TemplateConfig {
+  id: TemplateId;
+  name: string;
+  badge: string;
+  themeColor: string;
+  accentColor: string;
+  description: string;
+}
+
+export const TEMPLATES_CONFIG: TemplateConfig[] = [
+  {
+    id: "bmi",
+    name: "BMI Signature",
+    badge: "Figma Official",
+    themeColor: "#0B2854",
+    accentColor: "#F26522",
+    description: "Buy 'n' Move In composite card with bedroom counter & doc strip",
+  },
+  {
+    id: "eko",
+    name: "Eko Luxury Editorial",
+    badge: "Editorial Style",
+    themeColor: "#0A0A0A",
+    accentColor: "#FFFFFF",
+    description: "Full-bleed photo with cinematic black gradient & split specs",
+  },
+  {
+    id: "enose",
+    name: "Enose Luxury Gallery",
+    badge: "Architectural",
+    themeColor: "#47290C",
+    accentColor: "#FFF5ED",
+    description: "Warm cream frame with arch photo inset & dashed price card",
+  },
+];
+
 

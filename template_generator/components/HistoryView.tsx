@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, Filter, Image as ImageIcon, PlusCircle, ArrowRight, Trash2, ExternalLink } from "lucide-react";
+import { Search, Filter, Image as ImageIcon, PlusCircle, ArrowRight, Trash2 } from "lucide-react";
 import { PropertyItem } from "../types/propkit";
 import { formatNaira } from "../utils/extractor";
 import { STATUS_COLORS } from "../utils/constants";
@@ -155,13 +155,20 @@ export function HistoryView({
                     </div>
                   )}
 
-                  {/* Status Badge */}
-                  <div className="absolute top-3 left-3">
+                  {/* Status Badge & Template Badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
                     <span
                       className="px-2.5 py-1 rounded-full text-[11px] font-extrabold text-white shadow-xs"
                       style={{ backgroundColor: statusColor }}
                     >
                       {p.status}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-black/60 text-white backdrop-blur-xs">
+                      {p.templateId === "eko"
+                        ? "Eko Luxury"
+                        : p.templateId === "enose"
+                        ? "Enose Luxury"
+                        : "BMI Signature"}
                     </span>
                   </div>
 

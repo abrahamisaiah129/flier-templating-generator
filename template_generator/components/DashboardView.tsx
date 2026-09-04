@@ -126,6 +126,13 @@ export function DashboardView({
                   >
                     {p.status}
                   </span>
+                  <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-black/60 text-white backdrop-blur-xs">
+                    {p.templateId === "eko"
+                      ? "Eko Luxury"
+                      : p.templateId === "enose"
+                      ? "Enose Luxury"
+                      : "BMI Signature"}
+                  </span>
                 </div>
 
                 <div className="p-5 flex-1 flex flex-col justify-between">

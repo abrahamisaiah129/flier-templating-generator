@@ -93,7 +93,7 @@ export function Sidebar({
 
       {/* Sidebar Footer Info */}
       <div className="p-5 border-t border-white/10 text-xs text-white/50">
-        <p className="font-medium text-white/70">Buy 'n' Move In</p>
+        <p className="font-medium text-white/70">Buy &apos;n&apos; Move In</p>
         <p className="text-[11px] mt-0.5">Marketing Automation v2.0</p>
       </div>
     </>

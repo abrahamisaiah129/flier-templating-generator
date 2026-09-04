@@ -19,3 +19,75 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* ==========================================================================
+   Skill: Professional UI Micro-Interactions
+   Subtle, highly performant, GPU-accelerated active-state interactions.
+   Strict execution rules:
+   1. NEVER alter layout properties (no width/height/margin/padding/top/left).
+   2. ONLY animate GPU-accelerated properties ('transform' and 'opacity').
+   3. Transition duration strictly between 100ms and 150ms (120ms).
+   4. Always wrapped in 'prefers-reduced-motion' for accessibility.
+   5. Rigid corporate/SaaS visual style: cubic-bezier(0.4, 0, 0.2, 1), no bounce.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Global micro-interaction defaults for all interactive buttons and actionable elements */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  .btn-interactive,
+  .tap-action {
+    transition-property: transform, opacity;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+  }
+
+  /* Micro-interaction on click / active state */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active,
+  .btn-interactive:active,
+  .tap-action:active {
+    transform: scale(0.98);
+    opacity: 0.92;
+  }
+
+  /* Subtle card press for selectable tiles/templates */
+  .card-interactive {
+    transition-property: transform, opacity;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+  }
+
+  .card-interactive:active {
+    transform: scale(0.985);
+    opacity: 0.95;
+  }
+
+  /* Icon button micro-press */
+  .icon-btn-interactive {
+    transition-property: transform, opacity;
+    transition-duration: 110ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+  }
+
+  .icon-btn-interactive:active {
+    transform: scale(0.95);
+    opacity: 0.88;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  [role="button"],
+  .btn-interactive,
+  .tap-action,
+  .card-interactive,
+  .icon-btn-interactive {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+

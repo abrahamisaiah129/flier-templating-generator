@@ -141,7 +141,7 @@ export function NewPropertyView({
           Start with the raw brief
         </h1>
         <p className="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">
-          Paste the message, PDF text, or notes exactly as they arrived. We'll structure it without losing the source.
+          Paste the message, PDF text, or notes exactly as they arrived. We&apos;ll structure it without losing the source.
         </p>
       </div>
 

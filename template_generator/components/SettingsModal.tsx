@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { X, Upload, Check, DollarSign, Image as ImageIcon, FileText, Phone } from "lucide-react";
+import { X, Upload, DollarSign, Image as ImageIcon, FileText, Phone } from "lucide-react";
 import { AppSettings } from "../types/propkit";
 import { FIXED_CONTACT } from "../utils/constants";
 
@@ -102,7 +102,7 @@ export function SettingsModal({
               </label>
             </div>
             <p className="text-xs text-slate-500 mb-4">
-              Upload a transparent PNG to replace the default vector Buy 'n' Move In logo on generated flyers.
+              Upload a transparent PNG to replace the default vector Buy &apos;n&apos; Move In logo on generated flyers.
             </p>
 
             {settings.logoUrl ? (
