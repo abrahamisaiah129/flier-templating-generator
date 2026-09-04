@@ -16,7 +16,7 @@ export const CANVAS_H = 1350;
 interface FlyerCanvasProps {
   data: PropertyData;
   settings: AppSettings;
-  svgRef: RefObject<SVGSVGElement | null>;
+  svgRef?: RefObject<SVGSVGElement | null>;
   primaryImage: string | null;
   templateId?: TemplateId;
   className?: string;

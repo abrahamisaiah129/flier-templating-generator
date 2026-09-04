@@ -258,22 +258,39 @@ export function NewPropertyView({
             <p className="text-sm font-semibold text-slate-700 group-hover:text-[#1B494E]">
               Drag & drop {briefs.length > 1 ? `${briefs.length} images` : "images"} here, or click to browse
             </p>
-            <p className="text-xs text-slate-500 mt-1">JPG, JPEG, PNG, WEBP</p>
+            <p className="text-xs font-medium text-slate-500 mt-1">
+              1 image = 1 output · 2 images = 2 separate outputs · 3+ images = processed individually
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">JPG, JPEG, PNG, WEBP</p>
           </div>
         ) : (
           /* State B: Figma Screen 3 with "Upload Completed" banner + thumbnails */
           <div className="space-y-4">
-            {/* Dark Teal Upload Completed Banner */}
-            <div className="bg-[#1B494E] text-white py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-sm">
-              <div className="w-7 h-7 rounded-full bg-[#F26522] flex items-center justify-center text-white">
-                <CheckCircle2 size={18} />
+            {/* Dark Teal Upload Completed Banner with dynamic output indicator */}
+            <div className="bg-[#1B494E] text-white py-4 px-6 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-[#F26522] flex items-center justify-center text-white flex-shrink-0">
+                  <CheckCircle2 size={18} />
+                </div>
+                <div>
+                  <span className="font-bold text-sm tracking-wide block">Upload Completed</span>
+                  <span className="text-xs text-teal-100 font-medium block">
+                    {images.length === 1
+                      ? "1 image uploaded → 1 output image using the template"
+                      : images.length === 2
+                      ? "2 images uploaded → 2 separate output images using the template"
+                      : `${images.length} images uploaded → ${images.length} separate output images processed individually`}
+                  </span>
+                </div>
               </div>
-              <span className="font-bold text-sm tracking-wide">Upload Completed</span>
+              <span className="self-start sm:self-auto text-xs font-extrabold px-3 py-1 bg-white/10 rounded-full border border-white/20 whitespace-nowrap">
+                {images.length} {images.length === 1 ? "Output Flyer" : "Separate Outputs"}
+              </span>
             </div>
 
             {/* Thumbnails Gallery */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-              {images.map((img) => {
+              {images.map((img, idx) => {
                 const isPrimary = img.id === primaryId;
                 return (
                   <div
@@ -288,22 +305,27 @@ export function NewPropertyView({
                       className="w-full h-32 object-cover block"
                     />
 
-                    {/* Primary Badge */}
-                    {isPrimary ? (
-                      <div className="absolute top-2 left-2 bg-[#F26522] text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                        <Star size={10} fill="#ffffff" />
-                        <span>PRIMARY</span>
+                    {/* Output Number Tag & Primary Indicator */}
+                    <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                      <div className="bg-[#1B494E]/90 backdrop-blur-xs text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-xs">
+                        Output #{idx + 1}
                       </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSetPrimary(img.id)}
-                        className="absolute top-2 left-2 bg-black/60 hover:bg-[#F26522] text-white text-[10px] font-medium px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
-                      >
-                        <Star size={10} />
-                        <span>Set Primary</span>
-                      </button>
-                    )}
+                      {isPrimary ? (
+                        <div className="bg-[#F26522] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                          <Star size={9} fill="#ffffff" />
+                          <span>COVER</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetPrimary(img.id)}
+                          className="bg-black/60 hover:bg-[#F26522] text-white text-[9px] font-medium px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                        >
+                          <Star size={9} />
+                          <span>Make Cover</span>
+                        </button>
+                      )}
+                    </div>
 
                     {/* Delete action */}
                     <button

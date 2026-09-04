@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { PlusCircle, Home, CheckCircle2, Send, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { PlusCircle, Home, CheckCircle2, Send, ArrowRight, Image as ImageIcon, Images } from "lucide-react";
 import { PropertyItem } from "../types/propkit";
 import { formatNaira } from "../utils/extractor";
 import { STATUS_COLORS } from "../utils/constants";
@@ -132,6 +132,12 @@ export function DashboardView({
                       : p.templateId === "enose"
                       ? "Enose Luxury"
                       : "BMI Signature"}
+                  </span>
+                  <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-black/70 text-white backdrop-blur-xs flex items-center gap-1">
+                    <Images size={11} />
+                    <span>
+                      {p.images?.length || 1} {(p.images?.length || 1) === 1 ? "Flyer" : "Flyers"}
+                    </span>
                   </span>
                 </div>
 
