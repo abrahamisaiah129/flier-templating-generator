@@ -47,6 +47,10 @@ export function NewPropertyView({
   const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const maxImages = briefs.length;
+  const remainingImages = Math.max(0, maxImages - images.length);
+  const isImageComplete = images.length >= maxImages && maxImages > 0;
+
   const handleBriefChange = (index: number, val: string) => {
     setBriefs((prev) => {
       const copy = [...prev];
@@ -63,7 +67,19 @@ export function NewPropertyView({
 
   const handleRemoveBrief = (index: number) => {
     if (briefs.length > 1) {
-      setBriefs((prev) => prev.filter((_, i) => i !== index));
+      const nextBriefs = briefs.filter((_, i) => i !== index);
+      setBriefs(nextBriefs);
+      // Trim images if images exceed the new brief count
+      setImages((prev) => {
+        if (prev.length > nextBriefs.length) {
+          const trimmed = prev.slice(0, nextBriefs.length);
+          if (primaryId && !trimmed.some((img) => img.id === primaryId)) {
+            setPrimaryId(trimmed[0]?.id || null);
+          }
+          return trimmed;
+        }
+        return prev;
+      });
     }
   };
 
@@ -77,10 +93,27 @@ export function NewPropertyView({
       setLocalError("Please upload valid image files (JPG, PNG, or WEBP).");
       return;
     }
+
+    const currentSlots = Math.max(0, briefs.length - images.length);
+    if (currentSlots === 0) {
+      setLocalError(
+        `All ${briefs.length} required image(s) for your ${briefs.length} brief(s) have already been uploaded. The system only takes ${briefs.length} image(s).`
+      );
+      return;
+    }
+
     setLocalError(null);
 
+    // Limit files to remainingSlots
+    const filesToProcess = allowed.slice(0, currentSlots);
+    if (allowed.length > currentSlots) {
+      setLocalError(
+        `Only ${currentSlots} more image allowed for ${briefs.length} brief(s). ${allowed.length - currentSlots} extra file(s) were not added.`
+      );
+    }
+
     const newImgs: UploadedImage[] = [];
-    for (const f of allowed) {
+    for (const f of filesToProcess) {
       try {
         const url = await fileToDataUrl(f);
         newImgs.push({ id: uid(), url, name: f.name });
@@ -90,7 +123,7 @@ export function NewPropertyView({
     }
 
     setImages((prev) => {
-      const updated = [...prev, ...newImgs];
+      const updated = [...prev, ...newImgs].slice(0, briefs.length);
       if (!primaryId && updated.length > 0) {
         setPrimaryId(updated[0].id);
       }
@@ -118,6 +151,12 @@ export function NewPropertyView({
       setLocalError("Please enter at least one property brief or provide a brief URL.");
       return;
     }
+
+    if (images.length === 0) {
+      setLocalError(`Please upload at least 1 property image (${briefs.length} required for ${briefs.length} brief${briefs.length > 1 ? "s" : ""}).`);
+      return;
+    }
+
     setLocalError(null);
 
     // Ensure images are sorted so primary image is first
@@ -234,11 +273,9 @@ export function NewPropertyView({
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
             Upload Property Image
           </label>
-          {images.length > 0 && (
-            <span className="text-xs text-slate-500">
-              {images.length} {images.length === 1 ? "image" : "images"} uploaded
-            </span>
-          )}
+          <span className="text-xs font-semibold text-slate-500">
+            {images.length} of {maxImages} uploaded ({briefs.length} {briefs.length === 1 ? "brief" : "briefs"})
+          </span>
         </div>
 
         {/* State A: Dropzone when no images uploaded */}
@@ -256,35 +293,51 @@ export function NewPropertyView({
               <UploadCloud size={24} />
             </div>
             <p className="text-sm font-semibold text-slate-700 group-hover:text-[#1B494E]">
-              Drag & drop {briefs.length > 1 ? `${briefs.length} images` : "images"} here, or click to browse
+              Drag & drop {maxImages > 1 ? `${maxImages} property images` : "property image"} here, or click to browse
             </p>
             <p className="text-xs font-medium text-slate-500 mt-1">
-              1 image = 1 output · 2 images = 2 separate outputs · 3+ images = processed individually
+              {maxImages === 1
+                ? "1 brief = 1 property image required → 1 output flyer"
+                : `${maxImages} briefs = ${maxImages} property images required (1 image per brief)`}
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">JPG, JPEG, PNG, WEBP</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              1 image uploaded = 1 output image · 2 images uploaded = 2 separate output images
+            </p>
           </div>
         ) : (
-          /* State B: Figma Screen 3 with "Upload Completed" banner + thumbnails */
+          /* State B: Dynamic Progress Banner + Thumbnails */
           <div className="space-y-4">
-            {/* Dark Teal Upload Completed Banner with dynamic output indicator */}
-            <div className="bg-[#1B494E] text-white py-4 px-6 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            {/* Status Banner */}
+            <div
+              className={`text-white py-4 px-6 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm transition-colors ${
+                isImageComplete ? "bg-[#1B494E]" : "bg-[#163E42]"
+              }`}
+            >
               <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-full bg-[#F26522] flex items-center justify-center text-white flex-shrink-0">
                   <CheckCircle2 size={18} />
                 </div>
                 <div>
-                  <span className="font-bold text-sm tracking-wide block">Upload Completed</span>
+                  <span className="font-bold text-sm tracking-wide block">
+                    {isImageComplete
+                      ? "Image completed"
+                      : `${images.length} ${images.length === 1 ? "image" : "images"} completed, remaining ${remainingImages}`}
+                  </span>
                   <span className="text-xs text-teal-100 font-medium block">
-                    {images.length === 1
-                      ? "1 image uploaded → 1 output image using the template"
-                      : images.length === 2
-                      ? "2 images uploaded → 2 separate output images using the template"
-                      : `${images.length} images uploaded → ${images.length} separate output images processed individually`}
+                    {isImageComplete
+                      ? images.length === 1
+                        ? "1 image uploaded → 1 output image using the template"
+                        : images.length === 2
+                        ? "2 images uploaded → 2 separate output images using the template"
+                        : `${images.length} images uploaded → ${images.length} separate output images processed individually`
+                      : `${images.length} of ${maxImages} images uploaded · Please upload ${remainingImages} more image to match your ${maxImages} brief${maxImages > 1 ? "s" : ""}`}
                   </span>
                 </div>
               </div>
               <span className="self-start sm:self-auto text-xs font-extrabold px-3 py-1 bg-white/10 rounded-full border border-white/20 whitespace-nowrap">
-                {images.length} {images.length === 1 ? "Output Flyer" : "Separate Outputs"}
+                {isImageComplete
+                  ? `${images.length} ${images.length === 1 ? "Output Flyer" : "Separate Outputs"} Ready`
+                  : `${images.length} / ${maxImages} Uploaded`}
               </span>
             </div>
 
@@ -319,7 +372,7 @@ export function NewPropertyView({
                         <button
                           type="button"
                           onClick={() => handleSetPrimary(img.id)}
-                          className="bg-black/60 hover:bg-[#F26522] text-white text-[9px] font-medium px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                          className="bg-black/60 hover:bg-[#F26522] text-white text-[9px] font-medium px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 cursor-pointer"
                         >
                           <Star size={9} />
                           <span>Make Cover</span>
@@ -331,7 +384,7 @@ export function NewPropertyView({
                     <button
                       type="button"
                       onClick={() => handleDeleteImage(img.id)}
-                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                       title="Delete image"
                     >
                       <Trash2 size={12} />
@@ -344,15 +397,28 @@ export function NewPropertyView({
                 );
               })}
 
-              {/* Add more button */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="h-32 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1B494E] flex flex-col items-center justify-center text-slate-500 hover:text-[#1B494E] transition-colors p-2 text-center"
-              >
-                <Plus size={20} className="mb-1" />
-                <span className="text-xs font-semibold">Add more</span>
-              </button>
+              {/* Add remaining button if slots exist */}
+              {!isImageComplete ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-32 rounded-xl border-2 border-dashed border-orange-300 hover:border-[#F26522] bg-orange-50/20 hover:bg-orange-50/60 flex flex-col items-center justify-center text-slate-600 hover:text-[#F26522] transition-colors p-2 text-center cursor-pointer group"
+                >
+                  <Plus size={22} className="mb-1 text-[#F26522] group-hover:scale-110 transition-transform duration-150" />
+                  <span className="text-xs font-bold text-slate-700">Add remaining</span>
+                  <span className="text-[10px] text-orange-600 font-semibold mt-0.5">
+                    ({remainingImages} {remainingImages === 1 ? "image" : "images"} left)
+                  </span>
+                </button>
+              ) : (
+                <div className="h-32 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/30 flex flex-col items-center justify-center text-emerald-800 p-2 text-center select-none">
+                  <CheckCircle2 size={22} className="mb-1 text-emerald-600" />
+                  <span className="text-xs font-bold">Image completed</span>
+                  <span className="text-[10px] text-emerald-600/80 mt-0.5 font-medium">
+                    {maxImages} of {maxImages} briefs matched
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -360,7 +426,7 @@ export function NewPropertyView({
         <input
           ref={fileInputRef}
           type="file"
-          multiple
+          multiple={remainingImages > 1}
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={(e) => handleImageFiles(e.target.files)}

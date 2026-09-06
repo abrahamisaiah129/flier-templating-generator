@@ -100,8 +100,22 @@ export function FlyerCanvas({
       >
         <defs>
           <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Montserrat:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap');
+
+            .font-montserrat {
+              font-family: 'Montserrat', var(--font-montserrat), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            .font-cinzel {
+              font-family: 'Cinzel', var(--font-cinzel), 'Playfair Display', Georgia, serif;
+            }
+            .font-playfair {
+              font-family: 'Playfair Display', var(--font-playfair), Georgia, serif;
+            }
+            .font-sans-clean {
+              font-family: 'Plus Jakarta Sans', 'Montserrat', var(--font-plus-jakarta), -apple-system, sans-serif;
+            }
             .flier-font {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              font-family: 'Montserrat', var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
           `}</style>
 
@@ -116,6 +130,17 @@ export function FlyerCanvas({
 
           <filter id="badgeShadow" x="-10%" y="-10%" width="120%" height="120%">
             <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.2" />
+          </filter>
+
+          <filter id="bmiLogoShadow" x="67.4648" y="-46.9986" width="393.538" height="236.453" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+            <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+            <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+            <feOffset dy="13.2282"/>
+            <feGaussianBlur stdDeviation="8.2676"/>
+            <feComposite in2="hardAlpha" operator="out"/>
+            <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/>
+            <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+            <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
           </filter>
 
           {/* BMI Gradients */}
@@ -184,95 +209,90 @@ export function FlyerCanvas({
               fill="none"
             />
 
-            {/* 2. Top-Left Logo Badge */}
-            <g filter="url(#badgeShadow)">
+            {/* 2. Top-Left Logo Badge - Exact Figma curvature & position */}
+            <g filter="url(#bmiLogoShadow)">
               <rect
                 x="84"
-                y="32"
-                width="340"
-                height="96"
-                rx="30"
+                y="-43.6915"
+                width="360.468"
+                height="203.383"
+                rx="33.0704"
                 fill="#FFFFFF"
-                fillOpacity="0.98"
               />
               <image
                 href={settings.logoUrl || BMI_LOGO_DATA_URL}
-                x="98"
-                y="40"
-                width="312"
-                height="80"
+                x="140.468"
+                y="40.9182"
+                width="260"
+                height="79.1818"
                 preserveAspectRatio="xMidYMid meet"
               />
             </g>
 
             {/* 3. Floating Composite Spec Card */}
             <g filter="url(#floatingShadow)">
-              {/* Furnished Status Tab */}
+              {/* Furnished Status Tab - Exact Figma Vector Coordinates */}
               <g filter="url(#badgeShadow)">
-                <rect
-                  x="120"
-                  y="765"
-                  width="240"
-                  height="46"
-                  rx="10"
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M150.997 772H411.037C422.852 772 432.431 781.578 432.431 793.394V817.801H150.997V772Z"
                   fill="#EB7A29"
                 />
                 <text
-                  x="240"
-                  y="796"
+                  x="281"
+                  y="801"
                   textAnchor="middle"
                   fontSize="20"
                   fontWeight="900"
                   fill="#FFFFFF"
                   letterSpacing="2.5"
-                  className="flier-font"
+                  className="font-montserrat"
                 >
                   {data.furnished === false ? "UNFURNISHED" : "FURNISHED"}
                 </text>
               </g>
 
-              {/* Navy Spec Container */}
-              <rect
-                x="120"
-                y="810"
-                width="310"
-                height="305"
-                rx="18"
+              {/* Navy Spec Container - Exact Figma Vector Coordinates */}
+              <path
+                opacity="0.88"
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M166.69 817.864H421.71C430.03 817.864 436.776 824.609 436.776 832.93V1098.36C436.776 1106.68 430.03 1113.43 421.71 1113.43H166.69C141.728 1113.43 121.492 1093.19 121.492 1068.23V863.062C121.492 838.1 141.728 817.864 166.69 817.864Z"
                 fill="#0B2854"
-                fillOpacity="0.88"
               />
 
               {/* Giant Orange Bedroom Num + Stacked Details */}
               <g>
                 <text
-                  x="185"
-                  y="990"
+                  x="180"
+                  y="1008"
                   textAnchor="middle"
-                  fontSize="155"
+                  fontSize="165"
                   fontWeight="900"
                   fill="#EB7A29"
-                  className="flier-font"
+                  className="font-montserrat"
                 >
                   {bedroomNum}
                 </text>
                 <line
-                  x1="240"
-                  y1="830"
-                  x2="240"
+                  x1="234"
+                  y1="835"
+                  x2="234"
                   y2="1090"
                   stroke="#FFFFFF"
-                  strokeOpacity="0.18"
+                  strokeOpacity="0.22"
                   strokeWidth="1.5"
                 />
-                <g transform="translate(256, 835)">
+                <g transform="translate(248, 842)">
                   <text
                     x="0"
-                    y="18"
+                    y="20"
                     fontSize="20"
                     fontWeight="800"
                     fill="#EB7A29"
                     letterSpacing="2"
-                    className="flier-font"
+                    className="font-montserrat"
                   >
                     {bedroomNum === "1" ? "BEDROOM" : "BEDROOMS"}
                   </text>
@@ -280,12 +300,12 @@ export function FlyerCanvas({
                     <text
                       key={idx}
                       x="0"
-                      y={54 + idx * 34}
-                      fontSize="24"
+                      y={58 + idx * 36}
+                      fontSize="23"
                       fontWeight="900"
                       fill="#FFFFFF"
                       letterSpacing="1.5"
-                      className="flier-font"
+                      className="font-montserrat"
                     >
                       {line}
                     </text>
@@ -294,12 +314,12 @@ export function FlyerCanvas({
                     <text
                       key={idx}
                       x="0"
-                      y={140 + idx * 30}
-                      fontSize="20"
+                      y={145 + idx * 32}
+                      fontSize="19"
                       fontWeight="800"
                       fill="#EB7A29"
                       letterSpacing="1"
-                      className="flier-font"
+                      className="font-montserrat"
                     >
                       {hl}
                     </text>
@@ -307,46 +327,39 @@ export function FlyerCanvas({
                 </g>
               </g>
 
-              {/* Documentation Strip */}
+              {/* Documentation Strip - Exact Figma Vector Coordinates */}
               <g filter="url(#cardShadow)">
-                <rect
-                  x="120"
-                  y="1126"
-                  width="460"
-                  height="66"
-                  rx="12"
+                <path
+                  opacity="0.85"
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M137.739 1125.45H578.473V1195.66H137.739V1125.45Z"
                   fill="#F7F7F7"
-                  fillOpacity="0.95"
                 />
                 <text
-                  x="350"
+                  x="358"
                   y="1168"
                   textAnchor="middle"
                   fontSize={docFontSize}
                   fontWeight="900"
                   fill="#1C3C6A"
                   letterSpacing="2.5"
-                  className="flier-font"
+                  className="font-montserrat"
                 >
                   {docText.startsWith("TITLE:") ? docText : `TITLE: ${docText}`}
                 </text>
               </g>
 
-              {/* Location Pill */}
+              {/* Location Pill - Exact Figma Vector Coordinates */}
               <g filter="url(#cardShadow)">
-                <rect
-                  x="440"
-                  y="810"
-                  width="520"
-                  height="74"
-                  rx="37"
-                  fill="#111827"
-                  fillOpacity="0.88"
-                  stroke="#FFFFFF"
-                  strokeOpacity="0.15"
-                  strokeWidth="1.5"
+                <path
+                  opacity="0.82"
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M436 824H848.696C865.123 824 878.44 839.523 878.44 858.672V903.546C878.44 905.142 877.33 906.436 875.961 906.436H436V824Z"
+                  fill="#000000"
                 />
-                <g transform="translate(465, 828)">
+                <g transform="translate(450, 846)">
                   <path
                     d="M11 0C4.9 0 0 4.9 0 11C0 19.2 11 31 11 31C11 31 22 19.2 22 11C22 4.9 17.1 0 11 0ZM11 15C8.8 15 7 13.2 7 11C7 8.8 8.8 7 11 7C13.2 7 15 8.8 15 11C15 13.2 13.2 15 11 15Z"
                     fill="#EB7A29"
@@ -354,132 +367,68 @@ export function FlyerCanvas({
                   />
                 </g>
                 <text
-                  x="510"
-                  y="856"
+                  x="495"
+                  y="873"
                   fontSize={locFontSize}
                   fontWeight="900"
                   fill="#FFFFFF"
                   letterSpacing="1.5"
-                  className="flier-font"
+                  className="font-montserrat"
                 >
                   {locationText}
                 </text>
               </g>
 
-              {/* White Price Box */}
+              {/* White Price Box - Exact Figma Vector Coordinates */}
               <g filter="url(#cardShadow)">
-                <rect
-                  x="440"
-                  y="898"
-                  width="520"
-                  height="150"
-                  rx="20"
+                <path
+                  opacity="0.96"
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M437 907H875.121C891.762 907 905.253 920.491 905.253 937.132V1013.37C905.253 1030.01 891.762 1043.5 875.121 1043.5H437V907Z"
                   fill="#FFFFFF"
-                  fillOpacity="0.98"
                 />
                 {/* Vertical PRICE label */}
-                <g transform="translate(470, 930)">
-                  <text
-                    x="0"
-                    y="14"
-                    fontSize="13"
-                    fontWeight="900"
-                    fill="#64748B"
-                    letterSpacing="2"
-                    className="flier-font"
-                  >
-                    P
-                  </text>
-                  <text
-                    x="0"
-                    y="29"
-                    fontSize="13"
-                    fontWeight="900"
-                    fill="#64748B"
-                    letterSpacing="2"
-                    className="flier-font"
-                  >
-                    R
-                  </text>
-                  <text
-                    x="0"
-                    y="44"
-                    fontSize="13"
-                    fontWeight="900"
-                    fill="#64748B"
-                    letterSpacing="2"
-                    className="flier-font"
-                  >
-                    I
-                  </text>
-                  <text
-                    x="0"
-                    y="59"
-                    fontSize="13"
-                    fontWeight="900"
-                    fill="#64748B"
-                    letterSpacing="2"
-                    className="flier-font"
-                  >
-                    C
-                  </text>
-                  <text
-                    x="0"
-                    y="74"
-                    fontSize="13"
-                    fontWeight="900"
-                    fill="#64748B"
-                    letterSpacing="2"
-                    className="flier-font"
-                  >
-                    E
-                  </text>
-                  <text
-                    x="0"
-                    y="88"
-                    fontSize="13"
-                    fontWeight="900"
-                    fill="#64748B"
-                    letterSpacing="2"
-                    className="flier-font"
-                  >
-                    :
-                  </text>
+                <g transform="translate(458, 936)">
+                  <text x="0" y="14" fontSize="13" fontWeight="900" fill="#1A3B66" letterSpacing="2" className="font-montserrat">P</text>
+                  <text x="0" y="29" fontSize="13" fontWeight="900" fill="#1A3B66" letterSpacing="2" className="font-montserrat">R</text>
+                  <text x="0" y="44" fontSize="13" fontWeight="900" fill="#1A3B66" letterSpacing="2" className="font-montserrat">I</text>
+                  <text x="0" y="59" fontSize="13" fontWeight="900" fill="#1A3B66" letterSpacing="2" className="font-montserrat">C</text>
+                  <text x="0" y="74" fontSize="13" fontWeight="900" fill="#1A3B66" letterSpacing="2" className="font-montserrat">E</text>
+                  <text x="0" y="88" fontSize="13" fontWeight="900" fill="#1A3B66" letterSpacing="2" className="font-montserrat">:</text>
                 </g>
 
                 <text
-                  x="705"
+                  x="665"
                   y="995"
                   textAnchor="middle"
                   fontSize={priceFontSize}
                   fontWeight="900"
-                  fill="#0B2854"
-                  className="flier-font"
+                  fill="#1C3C6A"
+                  className="font-montserrat"
                 >
                   {rawPriceNaira}
                 </text>
               </g>
 
-              {/* Orange USD Strip */}
+              {/* Orange Initial Deposit / Payment Plan Strip - Exact Figma Path */}
               <g filter="url(#cardShadow)">
-                <rect
-                  x="440"
-                  y="1060"
-                  width="320"
-                  height="55"
-                  rx="27.5"
+                <path
+                  opacity="0.95"
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M437 1043H737.62V1080.59C737.62 1091.41 728.851 1100.18 718.035 1100.18H437V1043Z"
                   fill="#EB7A29"
-                  fillOpacity="0.95"
                 />
                 <text
-                  x="600"
-                  y="1097"
+                  x="585"
+                  y="1080"
                   textAnchor="middle"
-                  fontSize="26"
+                  fontSize="21"
                   fontWeight="900"
-                  fill="#FFFFFF"
+                  fill="#F6F6F6"
                   letterSpacing="1.5"
-                  className="flier-font"
+                  className="font-montserrat"
                 >
                   {priceUsd}
                 </text>
@@ -612,22 +561,22 @@ export function FlyerCanvas({
             <text
               x="126"
               y="1042"
-              fontSize="34"
-              fontWeight="600"
+              fontSize="28"
+              fontWeight="700"
               fill="#FFFFFF"
-              letterSpacing="0.5"
-              className="flier-font"
+              letterSpacing="2"
+              className="font-montserrat"
             >
-              {data.location || "Lekki Phase 1"}
+              {(data.location || "LEKKI PHASE 1").toUpperCase()}
             </text>
             <text
               x="126"
               y="1132"
               fontSize={ekoPriceFontSize}
-              fontWeight="900"
+              fontWeight="800"
               fill="#FFFFFF"
-              letterSpacing="-1"
-              className="flier-font"
+              letterSpacing="-0.5"
+              className="font-cinzel"
             >
               {rawPriceNaira}
             </text>
@@ -639,41 +588,41 @@ export function FlyerCanvas({
               x2="501"
               y2="1140"
               stroke="#FFFFFF"
-              strokeWidth="1.5"
-              strokeOpacity="0.85"
+              strokeWidth="2"
+              strokeOpacity="0.9"
             />
 
             {/* Right Side: Stacked Uppercase Specs */}
             <text
               x="535"
               y="1048"
-              fontSize="28"
-              fontWeight="800"
+              fontSize="26"
+              fontWeight="700"
               fill="#FFFFFF"
-              letterSpacing="1.2"
-              className="flier-font"
+              letterSpacing="1.5"
+              className="font-montserrat"
             >
               {ekoSpecLines[0]}
             </text>
             <text
               x="535"
               y="1088"
-              fontSize="28"
-              fontWeight="800"
+              fontSize="26"
+              fontWeight="700"
               fill="#FFFFFF"
-              letterSpacing="1.2"
-              className="flier-font"
+              letterSpacing="1.5"
+              className="font-montserrat"
             >
               {ekoSpecLines[1]}
             </text>
             <text
               x="535"
               y="1128"
-              fontSize="28"
-              fontWeight="800"
+              fontSize="26"
+              fontWeight="700"
               fill="#FFFFFF"
-              letterSpacing="1.2"
-              className="flier-font"
+              letterSpacing="1.5"
+              className="font-montserrat"
             >
               {ekoSpecLines[2]}
             </text>
@@ -686,7 +635,7 @@ export function FlyerCanvas({
               y2="1169"
               stroke="#FFFFFF"
               strokeWidth="1.5"
-              strokeOpacity="0.85"
+              strokeOpacity="0.9"
             />
 
             {/* Bottom Details */}
@@ -697,9 +646,9 @@ export function FlyerCanvas({
               fontSize="16"
               fontWeight="700"
               fill="#FFFFFF"
-              fillOpacity="0.85"
+              fillOpacity="0.9"
               letterSpacing="1.5"
-              className="flier-font"
+              className="font-montserrat"
             >
               {FIXED_CONTACT.phone} · {FIXED_CONTACT.instagram}
             </text>
@@ -763,8 +712,8 @@ export function FlyerCanvas({
                 rx="22"
                 fill="#47290C"
                 stroke="#FFFFFF"
-                strokeWidth="1.5"
-                strokeDasharray="4 4"
+                strokeWidth="2"
+                strokeDasharray="6 6"
                 filter="url(#cardShadow)"
               />
 
@@ -782,11 +731,11 @@ export function FlyerCanvas({
                   x="295"
                   y="1036"
                   textAnchor="middle"
-                  fontSize="28"
+                  fontSize="26"
                   fontWeight="900"
                   fill="#47290C"
                   letterSpacing="3"
-                  className="flier-font"
+                  className="font-montserrat"
                 >
                   PRICE
                 </text>
@@ -798,10 +747,10 @@ export function FlyerCanvas({
                 y="1128"
                 textAnchor="middle"
                 fontSize={enosePriceFontSize}
-                fontWeight="900"
+                fontWeight="800"
                 fill="#FFF5ED"
-                letterSpacing="1"
-                className="flier-font"
+                letterSpacing="-0.5"
+                className="font-cinzel"
               >
                 {rawPriceNaira}
               </text>
@@ -813,10 +762,11 @@ export function FlyerCanvas({
               <text
                 x="525"
                 y="1055"
-                fontSize="30"
+                fontSize="32"
                 fontWeight="700"
                 fill="#FFF5ED"
-                className="flier-font"
+                letterSpacing="1"
+                className="font-cinzel"
               >
                 {data.bedrooms ? `${data.bedrooms} Bedroom` : "Luxury"}{" "}
                 {data.propertyType || "Apartment"}
@@ -827,10 +777,10 @@ export function FlyerCanvas({
                 x="525"
                 y="1115"
                 fontSize={enoseLocFontSize}
-                fontWeight="900"
+                fontWeight="800"
                 fill="#FFF5ED"
-                letterSpacing="0.5"
-                className="flier-font"
+                letterSpacing="1"
+                className="font-montserrat"
               >
                 {enoseLocation.line1}
               </text>
@@ -839,10 +789,10 @@ export function FlyerCanvas({
                   x="525"
                   y="1175"
                   fontSize={enoseLocFontSize}
-                  fontWeight="900"
+                  fontWeight="800"
                   fill="#FFF5ED"
-                  letterSpacing="0.5"
-                  className="flier-font"
+                  letterSpacing="1"
+                  className="font-montserrat"
                 >
                   {enoseLocation.line2}
                 </text>
@@ -890,6 +840,10 @@ export async function svgToPngBlob(
     const svgStr = serializer.serializeToString(clonedSvg);
     const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(svgBlob);
+
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      await document.fonts.ready;
+    }
 
     const img = new window.Image();
     const loaded = new Promise<void>((resolve, reject) => {
