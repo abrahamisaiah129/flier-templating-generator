@@ -23,7 +23,9 @@ export function TemplateSelectorModal({
   title = "Choose Flyer Template",
   subtitle = "Select an official layout or one of your custom-created templates",
 }: TemplateSelectorModalProps) {
-  const [activeTab, setActiveTab] = useState<"all" | "official" | "custom">("all");
+  const [selectedCategories, setSelectedCategories] = useState<Set<"official" | "custom">>(
+    new Set(["official", "custom"])
+  );
   const [customTemplates, setCustomTemplates] = useState<CustomTemplateItem[]>(() =>
     typeof window !== "undefined" ? getStoredCustomTemplates() : []
   );
@@ -50,12 +52,26 @@ export function TemplateSelectorModal({
     isCustom: true,
   }));
 
-  const displayedTemplates =
-    activeTab === "official"
-      ? officialTemplates
-      : activeTab === "custom"
-      ? userTemplates
-      : [...officialTemplates, ...userTemplates];
+  const toggleCategory = (cat: "official" | "custom") => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) {
+        if (next.size === 1) {
+          const other = cat === "official" ? "custom" : "official";
+          return new Set([other]);
+        }
+        next.delete(cat);
+      } else {
+        next.add(cat);
+      }
+      return next;
+    });
+  };
+
+  const displayedTemplates = [
+    ...(selectedCategories.has("official") ? officialTemplates : []),
+    ...(selectedCategories.has("custom") ? userTemplates : []),
+  ];
 
   const handleSelect = (id: TemplateId) => {
     onSelectTemplate(id);
@@ -95,46 +111,58 @@ export function TemplateSelectorModal({
           </button>
         </div>
 
-        {/* Tab Controls */}
-        <div className="px-5 sm:px-6 pt-4 pb-2 flex items-center justify-between border-b border-slate-50 bg-slate-50/50">
-          <div className="inline-flex rounded-xl bg-slate-200/70 p-1 text-xs font-medium">
+        {/* Option Tags Filter */}
+        <div className="px-5 sm:px-6 pt-3.5 pb-2.5 flex items-center justify-between border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500 mr-0.5">Filter:</span>
+
+            {/* Official Option Tag */}
             <button
               type="button"
-              onClick={() => setActiveTab("all")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                activeTab === "all"
-                  ? "bg-white text-[#1B494E] font-bold shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+              onClick={() => toggleCategory("official")}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 ease-out cursor-pointer flex items-center gap-1.5 border shadow-2xs ${
+                selectedCategories.has("official")
+                  ? "bg-[#1B494E] text-white border-[#1B494E]"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              All ({officialTemplates.length + userTemplates.length})
+              <span>Official</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  selectedCategories.has("official")
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {officialTemplates.length}
+              </span>
             </button>
+
+            {/* Custom Option Tag */}
             <button
               type="button"
-              onClick={() => setActiveTab("official")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                activeTab === "official"
-                  ? "bg-white text-[#1B494E] font-bold shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+              onClick={() => toggleCategory("custom")}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 ease-out cursor-pointer flex items-center gap-1.5 border shadow-2xs ${
+                selectedCategories.has("custom")
+                  ? "bg-[#1B494E] text-white border-[#1B494E]"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              Official ({officialTemplates.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("custom")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                activeTab === "custom"
-                  ? "bg-white text-[#1B494E] font-bold shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Custom ({userTemplates.length})
+              <span>Custom</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  selectedCategories.has("custom")
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {userTemplates.length}
+              </span>
             </button>
           </div>
 
           <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">
-            Click to apply
+            {displayedTemplates.length} {displayedTemplates.length === 1 ? "template" : "templates"}
           </span>
         </div>
 
@@ -143,11 +171,17 @@ export function TemplateSelectorModal({
           {displayedTemplates.length === 0 ? (
             <div className="p-10 text-center rounded-2xl border-2 border-dashed border-slate-200">
               <Wand2 size={32} className="mx-auto text-slate-300 mb-2" />
-              <p className="text-sm font-bold text-slate-700">No custom templates yet</p>
+              <p className="text-sm font-bold text-slate-700">No templates match filter</p>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Paste vector code into the &ldquo;SVG to Code&rdquo; generator to add your own custom
-                flyer designs to your library.
+                Click the &ldquo;Official&rdquo; or &ldquo;Custom&rdquo; option tags above to display templates.
               </p>
+              <button
+                type="button"
+                onClick={() => setSelectedCategories(new Set(["official", "custom"]))}
+                className="mt-3 px-3.5 py-1.5 rounded-lg bg-[#1B494E] text-white text-xs font-bold hover:bg-[#14383C] transition-colors cursor-pointer"
+              >
+                Select Both Tags
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

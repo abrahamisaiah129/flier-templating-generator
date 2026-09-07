@@ -15,12 +15,13 @@ import {
   FolderArchive,
   Eye,
   Images,
+  Trash2,
 } from "lucide-react";
 import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
 import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
 import { EMPTY_FIELD, TEMPLATES_CONFIG } from "../utils/constants";
 import { generateCaption } from "../utils/extractor";
-import { getStoredCustomTemplates } from "../utils/storage";
+import { getStoredCustomTemplates, deleteStoredCustomTemplate } from "../utils/storage";
 
 interface ReviewAndKitViewProps {
   initialStep: "review" | "kit";
@@ -59,26 +60,61 @@ export function ReviewAndKitView({
 }: ReviewAndKitViewProps) {
   const [step, setStep] = useState<"review" | "kit">(initialStep);
   const [data, setData] = useState<PropertyData>(initialData);
-  const [customTemplates] = useState<CustomTemplateItem[]>(() =>
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplateItem[]>(() =>
     typeof window !== "undefined" ? getStoredCustomTemplates() : []
   );
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(
     initialTemplateId || "bmi"
   );
+  const [selectedCategories, setSelectedCategories] = useState<Set<"official" | "custom">>(
+    new Set(["official", "custom"])
+  );
 
-  const allAvailableTemplates = [
-    ...TEMPLATES_CONFIG.map((t) => ({ ...t, isCustom: false })),
-    ...customTemplates.map((c) => ({
-      id: c.id,
-      name: c.name,
-      badge: c.badge || "Custom",
-      themeColor: c.themeColor,
-      accentColor: c.accentColor,
-      description: c.description,
-      isCustom: true,
-      svgMarkup: c.svgMarkup,
-    })),
+  const toggleCategory = (cat: "official" | "custom") => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) {
+        if (next.size === 1) {
+          const other = cat === "official" ? "custom" : "official";
+          return new Set([other]);
+        }
+        next.delete(cat);
+      } else {
+        next.add(cat);
+      }
+      return next;
+    });
+  };
+
+  const officialTemplates = TEMPLATES_CONFIG.map((t) => ({ ...t, isCustom: false }));
+  const userTemplates = customTemplates.map((c) => ({
+    id: c.id,
+    name: c.name,
+    badge: c.badge || "Custom",
+    themeColor: c.themeColor,
+    accentColor: c.accentColor,
+    description: c.description,
+    isCustom: true,
+    svgMarkup: c.svgMarkup,
+  }));
+
+  const allAvailableTemplates = [...officialTemplates, ...userTemplates];
+
+  const displayedTemplates = [
+    ...(selectedCategories.has("official") ? officialTemplates : []),
+    ...(selectedCategories.has("custom") ? userTemplates : []),
   ];
+
+  const handleDeleteCustomTemplate = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (typeof window !== "undefined" && confirm("Are you sure you want to delete this custom template?")) {
+      deleteStoredCustomTemplate(id);
+      setCustomTemplates(getStoredCustomTemplates());
+      if (selectedTemplate === id) {
+        setSelectedTemplate("bmi");
+      }
+    }
+  };
 
   const currentSelectedCustomTemplate = customTemplates.find(
     (t) => t.id === selectedTemplate
@@ -755,27 +791,68 @@ export function ReviewAndKitView({
 
           {/* Template Selection Switcher (Official + Saved Custom Templates) */}
           <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1.5">
                 <Layout size={14} className="text-[#1B494E]" />
                 <span className="text-[11px] font-black uppercase tracking-wider text-[#1B494E]">
                   Choose Flyer Template
                 </span>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                {allAvailableTemplates.length} Templates {customTemplates.length > 0 ? `(${customTemplates.length} Custom)` : ""}
-              </span>
+
+              {/* Option Tags for Official and Custom */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => toggleCategory("official")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-150 cursor-pointer flex items-center gap-1 border shadow-2xs ${
+                    selectedCategories.has("official")
+                      ? "bg-[#1B494E] text-white border-[#1B494E]"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  <span>Official</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[9px] font-extrabold ${
+                      selectedCategories.has("official")
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {officialTemplates.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => toggleCategory("custom")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-150 cursor-pointer flex items-center gap-1 border shadow-2xs ${
+                    selectedCategories.has("custom")
+                      ? "bg-[#1B494E] text-white border-[#1B494E]"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  <span>Custom</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[9px] font-extrabold ${
+                      selectedCategories.has("custom")
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {userTemplates.length}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <div className={`grid ${allAvailableTemplates.length > 3 ? "grid-cols-2 sm:grid-cols-3 max-h-[280px] overflow-y-auto pr-1" : "grid-cols-3"} gap-2`}>
-              {allAvailableTemplates.map((tmpl) => {
+            <div className={`grid ${displayedTemplates.length > 3 ? "grid-cols-2 sm:grid-cols-3 max-h-[280px] overflow-y-auto pr-1" : "grid-cols-3"} gap-2`}>
+              {displayedTemplates.map((tmpl) => {
                 const isSelected = selectedTemplate === tmpl.id;
                 return (
-                  <button
+                  <div
                     key={tmpl.id}
-                    type="button"
                     onClick={() => setSelectedTemplate(tmpl.id)}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-transform duration-120 active:scale-[0.98] ${
+                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-transform duration-120 active:scale-[0.98] relative group ${
                       isSelected
                         ? "border-[#1B494E] bg-[#1B494E]/5 ring-2 ring-[#1B494E]/20 shadow-xs"
                         : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70"
@@ -791,19 +868,35 @@ export function ReviewAndKitView({
                               : tmpl.accentColor,
                         }}
                       />
-                      <span className={`text-[9px] font-extrabold uppercase px-1 py-0.2 rounded ${
-                        tmpl.isCustom ? "bg-orange-100 text-[#F26522]" : "bg-slate-100 text-slate-600"
-                      }`}>
-                        {tmpl.badge}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        {tmpl.badge ? (
+                          <span className={`text-[9px] font-extrabold uppercase px-1 py-0.2 rounded ${
+                            tmpl.isCustom ? "bg-orange-100 text-[#F26522]" : "bg-slate-100 text-slate-600"
+                          }`}>
+                            {tmpl.badge}
+                          </span>
+                        ) : null}
+                        {tmpl.isCustom && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteCustomTemplate(e, tmpl.id)}
+                            title="Delete custom template"
+                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="text-xs font-extrabold text-[#1B494E] truncate">
                       {tmpl.name}
                     </div>
-                    <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
-                      {tmpl.description}
-                    </div>
-                  </button>
+                    {tmpl.description ? (
+                      <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
+                        {tmpl.description}
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
