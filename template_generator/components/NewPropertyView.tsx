@@ -12,8 +12,10 @@ import {
   AlertCircle,
   X,
   Link as LinkIcon,
+  Sparkles,
 } from "lucide-react";
 import { UploadedImage } from "../types/propkit";
+import { parseDocumentText } from "../utils/documentParser";
 
 interface NewPropertyViewProps {
   onStartExtraction: (briefs: string[], images: UploadedImage[], briefUrl?: string) => Promise<void>;
@@ -39,13 +41,62 @@ export function NewPropertyView({
   extracting,
   error,
 }: NewPropertyViewProps) {
-  // Up to 3 briefs supported
-  const [briefs, setBriefs] = useState<string[]>([""]);
-  const [briefUrl, setBriefUrl] = useState("");
-  const [images, setImages] = useState<UploadedImage[]>([]);
+  // Up to 3 briefs supported - auto-ingests from ?brief=...
+  const [briefs, setBriefs] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search).get("brief");
+      if (p && p.trim()) return [p.trim()];
+    }
+    return [""];
+  });
+
+  // Brief URL - auto-ingests from ?url=... or ?briefUrl=...
+  const [briefUrl, setBriefUrl] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const u = params.get("url") || params.get("briefUrl");
+      if (u && u.trim()) return u.trim();
+    }
+    return "";
+  });
+
+  // Images - auto-ingests from ?image=... or ?images=... or ?bg=...
+  const [images, setImages] = useState<UploadedImage[]>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const imgParam = params.get("image") || params.get("img") || params.get("bg");
+      const imagesParam = params.get("images");
+      const urls: string[] = [];
+      if (imagesParam) {
+        urls.push(...imagesParam.split(",").map((s) => s.trim()).filter(Boolean));
+      } else if (imgParam) {
+        urls.push(imgParam.trim());
+      }
+      if (urls.length > 0) {
+        return urls.map((u, i) => ({
+          id: uid(),
+          url: u,
+          name: `Property Photo ${i + 1}`,
+        }));
+      }
+    }
+    return [];
+  });
+
   const [primaryId, setPrimaryId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Smart Brief Assistant state
+  const [showBriefAssistant, setShowBriefAssistant] = useState(false);
+  const [briefSourceTab, setBriefSourceTab] = useState<"writeup" | "url">("writeup");
+  const [uploadedDocName, setUploadedDocName] = useState<string | null>(null);
+  const [uploadedDocSize, setUploadedDocSize] = useState<string | null>(null);
+  const [writeupText, setWriteupText] = useState("");
+  const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+  const [isDraggingDoc, setIsDraggingDoc] = useState(false);
+  const docFileInputRef = useRef<HTMLInputElement>(null);
 
   const maxImages = briefs.length;
   const remainingImages = Math.max(0, maxImages - images.length);
@@ -143,6 +194,83 @@ export function NewPropertyView({
 
   const handleSetPrimary = (id: string) => {
     setPrimaryId(id);
+  };
+
+  const handleDocFiles = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const file = fileList[0];
+    const validExts = [".txt", ".docx", ".pdf", ".md", ".rtf", ".csv"];
+    const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+    if (!validExts.includes(ext) && !file.type.startsWith("text/")) {
+      setLocalError("Unsupported document format. Please upload .txt, .docx, .pdf, .md, or paste text.");
+      return;
+    }
+
+    setLocalError(null);
+    setUploadedDocName(file.name);
+    setUploadedDocSize(
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`
+    );
+
+    try {
+      const extractedText = await parseDocumentText(file);
+      setWriteupText(extractedText);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to read file text.";
+      setLocalError(msg);
+    }
+  };
+
+  const handleGenerateBriefWithAi = async () => {
+    const hasWriteup = writeupText.trim().length > 0;
+    const hasUrl = briefUrl.trim().length > 0;
+
+    if (briefSourceTab === "writeup" && !hasWriteup) {
+      setLocalError("Please upload a write-up document or enter property notes to generate a brief.");
+      return;
+    }
+    if (briefSourceTab === "url" && !hasUrl) {
+      setLocalError("Please enter a property brief URL to generate a brief.");
+      return;
+    }
+
+    setLocalError(null);
+    setAiSuccessMessage(null);
+    setIsGeneratingBrief(true);
+
+    try {
+      const res = await fetch("/api/extract-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          writeupText: briefSourceTab === "writeup" ? writeupText : undefined,
+          url: briefSourceTab === "url" ? briefUrl : undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to generate brief from write-up.");
+      }
+
+      if (data.briefs && Array.isArray(data.briefs) && data.briefs.length > 0) {
+        setBriefs(data.briefs);
+        setAiSuccessMessage(
+          `✨ AI successfully generated ${data.briefs.length} ${
+            data.briefs.length === 1 ? "brief" : "briefs"
+          }! You can review and edit below.`
+        );
+      } else {
+        throw new Error("No brief could be generated. Please check your content.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to generate brief with AI.";
+      setLocalError(msg);
+    } finally {
+      setIsGeneratingBrief(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -244,6 +372,240 @@ export function NewPropertyView({
             <Plus size={16} />
             <span>+ Add another brief</span>
           </button>
+        )}
+      </div>
+
+      {/* Smart Brief Assistant Inquiry Banner (Button + Text) */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gradient-to-r from-emerald-50/90 to-teal-50/80 border border-emerald-200/90 shadow-2xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+              <Sparkles size={17} />
+            </span>
+            <p className="text-xs sm:text-sm text-emerald-950 font-medium leading-relaxed">
+              Have a document or write-up and need to extract the data from it for the briefing?
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowBriefAssistant((prev) => !prev);
+              setLocalError(null);
+            }}
+            className="self-start sm:self-auto shrink-0 py-2.5 px-4 rounded-lg bg-[#1B494E] hover:bg-[#15383C] text-white font-bold text-xs flex items-center gap-2 transition-transform duration-150 ease-out active:scale-[0.98] motion-reduce:transform-none shadow-xs cursor-pointer"
+          >
+            <Sparkles size={14} />
+            <span>{showBriefAssistant ? "Close Assistant" : "AI Brief Assistant"}</span>
+          </button>
+        </div>
+
+        {/* Expandable Brief Assistant Component */}
+        {showBriefAssistant && (
+          <div className="mt-3 bg-white rounded-2xl border border-emerald-300/80 p-5 shadow-sm transition-all duration-150">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 pb-3 border-b border-slate-100">
+              <div>
+                <h4 className="text-sm font-bold text-[#1B494E] flex items-center gap-2">
+                  <span>AI Brief Assistant</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    Smart Extractor
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Upload a document, paste WhatsApp copy, or provide a listing URL. AI will synthesize the structured brief.
+                </p>
+              </div>
+
+              {/* Mode Selector Tabs */}
+              <div className="inline-flex rounded-lg bg-slate-100 p-0.5 self-start sm:self-auto text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBriefSourceTab("writeup");
+                    setLocalError(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-md transition-all duration-150 ease-out cursor-pointer ${
+                    briefSourceTab === "writeup"
+                      ? "bg-white text-[#1B494E] font-semibold shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Document / Write-up
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBriefSourceTab("url");
+                    setLocalError(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-md transition-all duration-150 ease-out cursor-pointer ${
+                    briefSourceTab === "url"
+                      ? "bg-white text-[#1B494E] font-semibold shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Listing URL
+                </button>
+              </div>
+            </div>
+
+            {/* Tab 1: Upload Write-up */}
+            {briefSourceTab === "writeup" && (
+              <div className="space-y-3">
+                <input
+                  ref={docFileInputRef}
+                  type="file"
+                  accept=".txt,.docx,.pdf,.md,.rtf,.csv,text/plain"
+                  className="hidden"
+                  onChange={(e) => handleDocFiles(e.target.files)}
+                />
+
+                {!uploadedDocName ? (
+                  <div
+                    onClick={() => docFileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingDoc(true);
+                    }}
+                    onDragLeave={() => setIsDraggingDoc(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingDoc(false);
+                      handleDocFiles(e.dataTransfer.files);
+                    }}
+                    className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-150 group ${
+                      isDraggingDoc
+                        ? "border-[#1B494E] bg-emerald-50/40"
+                        : "border-slate-300/80 hover:border-[#1B494E]/50 bg-[#E6EEEE]/20 hover:bg-[#E6EEEE]/35"
+                    }`}
+                  >
+                    <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-white shadow-xs border border-slate-200/80 flex items-center justify-center text-slate-600 group-hover:scale-105 transition-transform duration-150 motion-reduce:transform-none">
+                      <UploadCloud size={20} />
+                    </div>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-700">
+                      Click to upload or drag & drop property write-up
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Supports .txt, .docx (Word), .pdf, or .md brochures and WhatsApp notes
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3.5 bg-emerald-50/50 border border-emerald-200/80 rounded-xl">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-800 shrink-0">
+                        <FileText size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{uploadedDocName}</p>
+                        <p className="text-[11px] text-emerald-700 font-medium">
+                          {uploadedDocSize} • Ready to generate brief
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadedDocName(null);
+                        setUploadedDocSize(null);
+                        setWriteupText("");
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-white transition-colors cursor-pointer"
+                      title="Remove file"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Paste / edit write-up */}
+                <div className="pt-1">
+                  <textarea
+                    value={writeupText}
+                    onChange={(e) => setWriteupText(e.target.value)}
+                    rows={writeupText ? 4 : 3}
+                    placeholder="Or paste property writeup, brochure text, or WhatsApp listing message here..."
+                    className="w-full p-3 rounded-xl bg-[#E6EEEE]/30 border border-slate-300/70 text-xs text-slate-800 placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20 transition-all resize-y"
+                  />
+                </div>
+
+                {/* Generate Action Button */}
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    disabled={isGeneratingBrief || (!writeupText.trim() && !uploadedDocName)}
+                    onClick={handleGenerateBriefWithAi}
+                    className="py-2.5 px-5 rounded-lg bg-[#1B494E] hover:bg-[#15383C] disabled:bg-slate-300 text-white font-bold text-xs flex items-center gap-2 transition-transform duration-150 ease-out active:scale-[0.98] motion-reduce:transform-none shadow-xs disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isGeneratingBrief ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>AI is creating your brief...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={14} />
+                        <span>Extract Brief from Write-up</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: Listing URL */}
+            {briefSourceTab === "url" && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={briefUrl}
+                    onChange={(e) => setBriefUrl(e.target.value)}
+                    placeholder="https://... paste property listing URL (PropertyPro, Nigeria Property Centre, etc.)"
+                    className="w-full py-3 pl-4 pr-10 rounded-xl bg-[#E6EEEE]/40 border border-slate-300/80 text-sm text-slate-800 placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/30 focus:border-[#1B494E] transition-all"
+                  />
+                  <LinkIcon
+                    size={16}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    disabled={isGeneratingBrief || !briefUrl.trim()}
+                    onClick={handleGenerateBriefWithAi}
+                    className="py-2.5 px-5 rounded-lg bg-[#1B494E] hover:bg-[#15383C] disabled:bg-slate-300 text-white font-bold text-xs flex items-center gap-2 transition-transform duration-150 ease-out active:scale-[0.98] motion-reduce:transform-none shadow-xs disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isGeneratingBrief ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>AI is extracting from URL...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={14} />
+                        <span>Generate Brief from URL</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* AI Success Notification */}
+            {aiSuccessMessage && (
+              <div className="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center gap-2.5 text-xs text-emerald-800 font-medium">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span className="flex-1">{aiSuccessMessage}</span>
+                <button
+                  type="button"
+                  onClick={() => setAiSuccessMessage(null)}
+                  className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

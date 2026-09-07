@@ -891,6 +891,11 @@ export function ReviewAndKitView({
             settings={settings}
             svgRef={svgRef}
             primaryImage={currentActiveImage}
+            secondaryImages={
+              images
+                .filter((_, idx) => idx !== safeActiveIndex)
+                .map((img) => img.url)
+            }
             templateId={selectedTemplate}
             customTemplate={currentSelectedCustomTemplate}
           />
@@ -925,6 +930,11 @@ export function ReviewAndKitView({
               data={data}
               settings={settings}
               primaryImage={img.url}
+              secondaryImages={
+                images
+                  .filter((_, i) => i !== idx)
+                  .map((m) => m.url)
+              }
               templateId={selectedTemplate}
               customTemplate={currentSelectedCustomTemplate}
             />

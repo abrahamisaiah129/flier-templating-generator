@@ -18,6 +18,7 @@ function injectPropertyDataIntoSvg(
   rawSvg: string,
   data: PropertyData,
   primaryImage: string | null,
+  secondaryImages: string[] = [],
   settings: AppSettings,
   helpers: {
     rawPriceNaira: string;
@@ -50,15 +51,49 @@ function injectPropertyDataIntoSvg(
     res = res.split(token).join(value);
   }
 
-  if (primaryImage) {
-    res = res.split("{{image}}").join(primaryImage);
-    res = res.split("{{image_url}}").join(primaryImage);
+  // Primary image tokens
+  const pImg = primaryImage || "";
+  res = res.split("{{image}}").join(pImg);
+  res = res.split("{{image_url}}").join(pImg);
+  res = res.split("{{primary_image}}").join(pImg);
+  res = res.split("{{background_image}}").join(pImg);
+  res = res.split("{{hero_image}}").join(pImg);
 
-    // If an <image> tag exists with an href or xlink:href, replace it with primaryImage
-    res = res.replace(/<image\b([^>]*?)(href|xlink:href)=["'][^"']*["']/i, (match, before, attr) => {
-      return `<image${before}${attr}="${primaryImage}"`;
-    });
-  }
+  // Secondary image tokens
+  const sImg1 = secondaryImages[0] || pImg;
+  const sImg2 = secondaryImages[1] || sImg1 || pImg;
+  res = res.split("{{image_2}}").join(sImg1);
+  res = res.split("{{secondary_image}}").join(sImg1);
+  res = res.split("{{secondary_image_1}}").join(sImg1);
+  res = res.split("{{thumbnail_1}}").join(sImg1);
+  res = res.split("{{image_3}}").join(sImg2);
+  res = res.split("{{secondary_image_2}}").join(sImg2);
+  res = res.split("{{thumbnail_2}}").join(sImg2);
+
+  // Ensure all <image> tags have crossOrigin="anonymous" and both href/xlink:href
+  let imgIndex = 0;
+  res = res.replace(/<image\b([\s\S]*?)(\/?>)/gi, (match, attrs, close) => {
+    let cleanAttrs = attrs;
+    const targetUrl = imgIndex === 0 ? pImg : secondaryImages[imgIndex - 1] || pImg;
+    imgIndex++;
+
+    if (!cleanAttrs.includes("crossOrigin") && !cleanAttrs.includes("crossorigin")) {
+      cleanAttrs += ' crossOrigin="anonymous"';
+    }
+
+    if (targetUrl) {
+      if (/(?:href|xlink:href)=/i.test(cleanAttrs)) {
+        cleanAttrs = cleanAttrs.replace(
+          /(?:href|xlink:href)=["'][^"']*["']/gi,
+          `href="${targetUrl}" xlink:href="${targetUrl}"`
+        );
+      } else {
+        cleanAttrs += ` href="${targetUrl}" xlink:href="${targetUrl}"`;
+      }
+    }
+
+    return `<image${cleanAttrs}${close}`;
+  });
 
   return res;
 }
@@ -68,9 +103,11 @@ interface FlyerCanvasProps {
   settings: AppSettings;
   svgRef?: RefObject<SVGSVGElement | null>;
   primaryImage: string | null;
+  secondaryImages?: string[];
   templateId?: TemplateId;
   customTemplate?: CustomTemplateItem;
   className?: string;
+  fallbackColor?: string;
 }
 
 export function FlyerCanvas({
@@ -78,10 +115,44 @@ export function FlyerCanvas({
   settings,
   svgRef,
   primaryImage,
+  secondaryImages = [],
   templateId = "bmi",
   customTemplate,
   className = "",
+  fallbackColor,
 }: FlyerCanvasProps) {
+  // Ingest image from URL parameters if primaryImage is not provided
+  const resolvedPrimaryImage = (() => {
+    if (primaryImage && primaryImage.trim().length > 0) return primaryImage.trim();
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlImg =
+        params.get("image") ||
+        params.get("img") ||
+        params.get("bg") ||
+        params.get("primaryImage");
+      if (urlImg) return urlImg.trim();
+    }
+    return null;
+  })();
+
+  // Ingest secondary images from URL parameters if none provided
+  const resolvedSecondaryImages = (() => {
+    if (secondaryImages && secondaryImages.length > 0) return secondaryImages;
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const multi = params.get("images") || params.get("secondaryImages");
+      if (multi) {
+        return multi.split(",").map((s) => s.trim()).filter(Boolean);
+      }
+      const img2 = params.get("image2") || params.get("img2");
+      const img3 = params.get("image3") || params.get("img3");
+      const list = [img2, img3].filter((s): s is string => Boolean(s && s.trim().length > 0));
+      if (list.length > 0) return list;
+    }
+    return [];
+  })();
+
   // Formatters & helpers
   const rawPriceNaira = formatNaira(data.priceNGN) || "PRICE ON REQUEST";
   const priceUsd = formatUsd(data.priceNGN, settings.usdRate) || "USD ESTIMATE";
@@ -103,7 +174,8 @@ export function FlyerCanvas({
     const replaced = injectPropertyDataIntoSvg(
       resolvedCustomTemplate.svgMarkup,
       data,
-      primaryImage,
+      resolvedPrimaryImage,
+      resolvedSecondaryImages,
       settings,
       {
         rawPriceNaira,
@@ -264,21 +336,67 @@ export function FlyerCanvas({
         {/* ========================================================= */}
         {templateId === "bmi" && (
           <g>
-            {/* 1. Background Photo */}
-            {primaryImage ? (
+            {/* 1. Background Photo Layer with Fallback & CORS handling */}
+            <rect x="0" y="0" width={CANVAS_W} height="1293" fill={fallbackColor || "#1E293B"} />
+            {resolvedPrimaryImage && (
               <image
-                href={primaryImage}
+                href={resolvedPrimaryImage}
+                xlinkHref={resolvedPrimaryImage}
+                crossOrigin="anonymous"
                 x="0"
                 y="0"
                 width={CANVAS_W}
                 height="1293"
                 preserveAspectRatio="xMidYMid slice"
               />
-            ) : (
-              <rect x="0" y="0" width={CANVAS_W} height="1293" fill="#1E293B" />
             )}
             <rect x="0" y="0" width={CANVAS_W} height="280" fill="url(#bmiTopVignette)" />
             <rect x="0" y="700" width={CANVAS_W} height="593" fill="url(#bmiBottomVignette)" />
+
+            {/* Secondary Photo Containers (Nested rounded thumbnail shapes with clipping masks) */}
+            {resolvedSecondaryImages.length > 0 && (
+              <g id="bmiSecondaryPhotos" filter="url(#cardShadow)">
+                {resolvedSecondaryImages.slice(0, 2).map((secUrl, sIdx) => {
+                  const xPos = resolvedSecondaryImages.length === 1 ? 780 : 640 + sIdx * 190;
+                  const yPos = 55;
+                  const w = resolvedSecondaryImages.length === 1 ? 230 : 175;
+                  const h = resolvedSecondaryImages.length === 1 ? 160 : 130;
+                  const clipId = `bmiSecClip_${sIdx}`;
+                  return (
+                    <g key={sIdx}>
+                      <defs>
+                        <clipPath id={clipId}>
+                          <rect x={xPos} y={yPos} width={w} height={h} rx="18" ry="18" />
+                        </clipPath>
+                      </defs>
+                      <rect x={xPos} y={yPos} width={w} height={h} rx="18" ry="18" fill={fallbackColor || "#1E293B"} />
+                      <image
+                        href={secUrl}
+                        xlinkHref={secUrl}
+                        crossOrigin="anonymous"
+                        x={xPos}
+                        y={yPos}
+                        width={w}
+                        height={h}
+                        clipPath={`url(#${clipId})`}
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                      <rect
+                        x={xPos}
+                        y={yPos}
+                        width={w}
+                        height={h}
+                        rx="18"
+                        ry="18"
+                        fill="none"
+                        stroke="#FFFFFF"
+                        strokeWidth="3.5"
+                      />
+                    </g>
+                  );
+                })}
+              </g>
+            )}
 
             {/* Outer 15px White Frame */}
             <rect
@@ -622,22 +740,69 @@ export function FlyerCanvas({
         {/* ========================================================= */}
         {templateId === "eko" && (
           <g>
-            {/* Full-bleed Photo */}
-            {primaryImage ? (
+            {/* Full-bleed Photo Layer with Fallback & CORS handling */}
+            <rect x="0" y="0" width={CANVAS_W} height={CANVAS_H} fill={fallbackColor || "#0F172A"} />
+            {resolvedPrimaryImage && (
               <image
-                href={primaryImage}
+                href={resolvedPrimaryImage}
+                xlinkHref={resolvedPrimaryImage}
+                crossOrigin="anonymous"
                 x="0"
                 y="0"
                 width={CANVAS_W}
                 height={CANVAS_H}
                 preserveAspectRatio="xMidYMid slice"
               />
-            ) : (
-              <rect x="0" y="0" width={CANVAS_W} height={CANVAS_H} fill="#1E293B" />
             )}
 
             {/* Deep Cinematic Vignette */}
             <rect x="0" y="620" width={CANVAS_W} height="730" fill="url(#ekoBottomGrad)" />
+
+            {/* Secondary Photo Containers (Eko Editorial Thumbnails with clipping masks) */}
+            {resolvedSecondaryImages.length > 0 && (
+              <g id="ekoSecondaryPhotos" filter="url(#cardShadow)">
+                {resolvedSecondaryImages.slice(0, 2).map((secUrl, sIdx) => {
+                  const xPos = resolvedSecondaryImages.length === 1 ? 780 : 640 + sIdx * 190;
+                  const yPos = 60;
+                  const w = resolvedSecondaryImages.length === 1 ? 230 : 175;
+                  const h = resolvedSecondaryImages.length === 1 ? 160 : 130;
+                  const clipId = `ekoSecClip_${sIdx}`;
+                  return (
+                    <g key={sIdx}>
+                      <defs>
+                        <clipPath id={clipId}>
+                          <rect x={xPos} y={yPos} width={w} height={h} rx="16" ry="16" />
+                        </clipPath>
+                      </defs>
+                      <rect x={xPos} y={yPos} width={w} height={h} rx="16" ry="16" fill={fallbackColor || "#1E293B"} />
+                      <image
+                        href={secUrl}
+                        xlinkHref={secUrl}
+                        crossOrigin="anonymous"
+                        x={xPos}
+                        y={yPos}
+                        width={w}
+                        height={h}
+                        clipPath={`url(#${clipId})`}
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                      <rect
+                        x={xPos}
+                        y={yPos}
+                        width={w}
+                        height={h}
+                        rx="16"
+                        ry="16"
+                        fill="none"
+                        stroke="#FFFFFF"
+                        strokeWidth="3"
+                        strokeOpacity="0.95"
+                      />
+                    </g>
+                  );
+                })}
+              </g>
+            )}
 
             {/* Left Side: Location & Giant Bold Price */}
             <text
@@ -765,23 +930,69 @@ export function FlyerCanvas({
               preserveAspectRatio="xMidYMid meet"
             />
 
-            {/* Main Arch-top Photo Frame */}
+            {/* Main Arch-top Photo Frame with Fallback & CORS handling */}
             <g clipPath="url(#enoseArchClip)">
-              {primaryImage ? (
+              <rect x="48" y="165" width="984" height="1135" fill={fallbackColor || "#2A1808"} />
+              {resolvedPrimaryImage && (
                 <image
-                  href={primaryImage}
+                  href={resolvedPrimaryImage}
+                  xlinkHref={resolvedPrimaryImage}
+                  crossOrigin="anonymous"
                   x="48"
                   y="165"
                   width="984"
                   height="1135"
                   preserveAspectRatio="xMidYMid slice"
                 />
-              ) : (
-                <rect x="48" y="165" width="984" height="1135" fill="#1E293B" />
               )}
               {/* Chocolate Brown Bottom Vignette */}
               <rect x="48" y="800" width="984" height="500" fill="url(#enoseGrad)" />
             </g>
+
+            {/* Enose Secondary Photo Container (Nested Arch/Rounded shape with clipping masks) */}
+            {resolvedSecondaryImages.length > 0 && (
+              <g id="enoseSecondaryPhotos" filter="url(#cardShadow)">
+                {resolvedSecondaryImages.slice(0, 2).map((secUrl, sIdx) => {
+                  const xPos = 740;
+                  const yPos = resolvedSecondaryImages.length === 1 ? 210 : 210 + sIdx * 155;
+                  const w = 240;
+                  const h = resolvedSecondaryImages.length === 1 ? 165 : 135;
+                  const clipId = `enoseSecClip_${sIdx}`;
+                  return (
+                    <g key={sIdx}>
+                      <defs>
+                        <clipPath id={clipId}>
+                          <rect x={xPos} y={yPos} width={w} height={h} rx="20" ry="20" />
+                        </clipPath>
+                      </defs>
+                      <rect x={xPos} y={yPos} width={w} height={h} rx="20" ry="20" fill={fallbackColor || "#47290C"} />
+                      <image
+                        href={secUrl}
+                        xlinkHref={secUrl}
+                        crossOrigin="anonymous"
+                        x={xPos}
+                        y={yPos}
+                        width={w}
+                        height={h}
+                        clipPath={`url(#${clipId})`}
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                      <rect
+                        x={xPos}
+                        y={yPos}
+                        width={w}
+                        height={h}
+                        rx="20"
+                        ry="20"
+                        fill="none"
+                        stroke="#FFF5ED"
+                        strokeWidth="3.5"
+                      />
+                    </g>
+                  );
+                })}
+              </g>
+            )}
 
             {/* Bottom Left Price Badge */}
             <g>
@@ -905,23 +1116,74 @@ export async function svgToPngBlob(
   try {
     const clonedSvg = svgEl.cloneNode(true) as SVGSVGElement;
 
-    // Convert any external <image> hrefs to Data URLs
+    // Convert any external <image> hrefs to Data URLs to guarantee clean canvas export
     const images = Array.from(clonedSvg.querySelectorAll("image"));
     for (const imgEl of images) {
       const href = imgEl.getAttribute("href") || imgEl.getAttribute("xlink:href");
+      imgEl.setAttribute("crossOrigin", "anonymous");
+
       if (href && href.startsWith("http")) {
+        let convertedDataUrl: string | null = null;
+
+        // Method 1: Fetch with CORS
         try {
           const res = await fetch(href, { mode: "cors" });
-          const blob = await res.blob();
-          const dataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-          imgEl.setAttribute("href", dataUrl);
+          if (res.ok) {
+            const blob = await res.blob();
+            convertedDataUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+          }
         } catch {
-          // Gracefully continue
+          // Fetch failed (e.g. CORS blocked by host)
         }
+
+        // Method 2: Offscreen image draw if fetch failed
+        if (!convertedDataUrl) {
+          try {
+            const imgObj = new window.Image();
+            imgObj.crossOrigin = "anonymous";
+            convertedDataUrl = await new Promise<string | null>((resolve) => {
+              imgObj.onload = () => {
+                try {
+                  const offCanvas = document.createElement("canvas");
+                  offCanvas.width = imgObj.naturalWidth || 400;
+                  offCanvas.height = imgObj.naturalHeight || 300;
+                  const offCtx = offCanvas.getContext("2d");
+                  if (offCtx) {
+                    offCtx.drawImage(imgObj, 0, 0);
+                    resolve(offCanvas.toDataURL("image/png"));
+                    return;
+                  }
+                } catch {
+                  // Canvas tainted
+                }
+                resolve(null);
+              };
+              imgObj.onerror = () => resolve(null);
+              imgObj.src = href;
+            });
+          } catch {
+            // Offscreen attempt failed
+          }
+        }
+
+        if (convertedDataUrl) {
+          imgEl.setAttribute("href", convertedDataUrl);
+          imgEl.setAttribute("xlink:href", convertedDataUrl);
+        } else {
+          // If the remote host completely forbids cross-origin extraction,
+          // remove the external link so the canvas is NOT tainted and toBlob never fails!
+          // The underlying fallback rect gracefully provides the background.
+          imgEl.removeAttribute("href");
+          imgEl.removeAttribute("xlink:href");
+        }
+      } else if (href) {
+        // Ensure both attributes are in sync
+        imgEl.setAttribute("href", href);
+        imgEl.setAttribute("xlink:href", href);
       }
     }
 
@@ -935,9 +1197,12 @@ export async function svgToPngBlob(
     }
 
     const img = new window.Image();
-    const loaded = new Promise<void>((resolve, reject) => {
+    const loaded = new Promise<void>((resolve) => {
       img.onload = () => resolve();
-      img.onerror = (e) => reject(e);
+      img.onerror = (e) => {
+        console.warn("SVG rasterizer encountered non-fatal image warning, rendering with fallbacks:", e);
+        resolve(); // Never block the user export
+      };
     });
     img.src = url;
     await loaded;
@@ -957,10 +1222,15 @@ export async function svgToPngBlob(
     URL.revokeObjectURL(url);
 
     return new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), "image/png");
+      try {
+        canvas.toBlob((blob) => resolve(blob), "image/png");
+      } catch (toBlobErr) {
+        console.warn("Canvas toBlob error:", toBlobErr);
+        resolve(null);
+      }
     });
   } catch (err) {
-    console.error("Failed to render SVG to PNG", err);
+    console.error("Failed to render SVG to PNG without blocking:", err);
     return null;
   }
 }
