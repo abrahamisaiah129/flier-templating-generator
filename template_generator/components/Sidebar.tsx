@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Home, PlusCircle, Briefcase, X } from "lucide-react";
+import { Home, PlusCircle, Briefcase, X, FileCode2 } from "lucide-react";
 import { ActiveView } from "../types/propkit";
 
 interface SidebarProps {
@@ -27,6 +27,11 @@ export function Sidebar({
       id: "new" as ActiveView,
       label: "New Property",
       icon: PlusCircle,
+    },
+    {
+      id: "converter" as ActiveView,
+      label: "SVG to Code",
+      icon: FileCode2,
     },
     {
       id: "history" as ActiveView,

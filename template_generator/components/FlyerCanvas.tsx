@@ -1,7 +1,7 @@
 "use client";
 
 import React, { RefObject } from "react";
-import { PropertyData, AppSettings, TemplateId } from "../types/propkit";
+import { PropertyData, AppSettings, TemplateId, CustomTemplateItem } from "../types/propkit";
 import { FIXED_CONTACT, EMPTY_FIELD } from "../utils/constants";
 import {
   BMI_LOGO_DATA_URL,
@@ -9,9 +9,59 @@ import {
   ENOSE_LOGO_DATA_URL,
 } from "../utils/templateLogos";
 import { formatNaira, formatUsd, formatPropertyTypeLines } from "../utils/extractor";
+import { getStoredCustomTemplates } from "../utils/storage";
 
 export const CANVAS_W = 1080;
 export const CANVAS_H = 1350;
+
+function injectPropertyDataIntoSvg(
+  rawSvg: string,
+  data: PropertyData,
+  primaryImage: string | null,
+  settings: AppSettings,
+  helpers: {
+    rawPriceNaira: string;
+    priceUsd: string;
+    bedroomNum: string;
+    locationText: string;
+    docText: string;
+  }
+): string {
+  let res = rawSvg;
+
+  const tokenMap: Record<string, string> = {
+    "{{title}}": data.propertyTitle || "Luxury Property",
+    "{{property_title}}": data.propertyTitle || "Luxury Property",
+    "{{property_type}}": data.propertyType || "Apartment",
+    "{{bedrooms}}": helpers.bedroomNum,
+    "{{bathrooms}}": String(data.bathrooms || 4),
+    "{{location}}": helpers.locationText,
+    "{{price}}": helpers.rawPriceNaira,
+    "{{price_naira}}": helpers.rawPriceNaira,
+    "{{price_usd}}": helpers.priceUsd,
+    "{{documentation}}": helpers.docText,
+    "{{phone}}": FIXED_CONTACT.phone,
+    "{{instagram}}": FIXED_CONTACT.instagram,
+    "{{website}}": FIXED_CONTACT.website,
+    "{{email}}": FIXED_CONTACT.email,
+  };
+
+  for (const [token, value] of Object.entries(tokenMap)) {
+    res = res.split(token).join(value);
+  }
+
+  if (primaryImage) {
+    res = res.split("{{image}}").join(primaryImage);
+    res = res.split("{{image_url}}").join(primaryImage);
+
+    // If an <image> tag exists with an href or xlink:href, replace it with primaryImage
+    res = res.replace(/<image\b([^>]*?)(href|xlink:href)=["'][^"']*["']/i, (match, before, attr) => {
+      return `<image${before}${attr}="${primaryImage}"`;
+    });
+  }
+
+  return res;
+}
 
 interface FlyerCanvasProps {
   data: PropertyData;
@@ -19,6 +69,7 @@ interface FlyerCanvasProps {
   svgRef?: RefObject<SVGSVGElement | null>;
   primaryImage: string | null;
   templateId?: TemplateId;
+  customTemplate?: CustomTemplateItem;
   className?: string;
 }
 
@@ -28,6 +79,7 @@ export function FlyerCanvas({
   svgRef,
   primaryImage,
   templateId = "bmi",
+  customTemplate,
   className = "",
 }: FlyerCanvasProps) {
   // Formatters & helpers
@@ -36,6 +88,34 @@ export function FlyerCanvas({
   const bedroomNum = data.bedrooms ? String(data.bedrooms) : "4";
   const locationText = (data.location || EMPTY_FIELD).toUpperCase().trim();
   const docText = (data.documentation || "GOVERNOR'S CONSENT").toUpperCase().trim();
+
+  const isCustom = templateId !== "bmi" && templateId !== "eko" && templateId !== "enose";
+  const resolvedCustomTemplate =
+    customTemplate ||
+    (isCustom
+      ? (typeof window !== "undefined"
+          ? getStoredCustomTemplates().find((t) => t.id === templateId)
+          : undefined)
+      : undefined);
+
+  const processedCustomSvgInner = (() => {
+    if (!isCustom || !resolvedCustomTemplate?.svgMarkup) return "";
+    const replaced = injectPropertyDataIntoSvg(
+      resolvedCustomTemplate.svgMarkup,
+      data,
+      primaryImage,
+      settings,
+      {
+        rawPriceNaira,
+        priceUsd,
+        bedroomNum,
+        locationText,
+        docText,
+      }
+    );
+    const match = replaced.match(/<svg\b[^>]*>([\s\S]*?)<\/svg>/i);
+    return match ? match[1] : replaced;
+  })();
 
   const { titleLines, highlightLines } = formatPropertyTypeLines(
     data.propertyType,
@@ -91,7 +171,9 @@ export function FlyerCanvas({
         className="block w-full h-auto select-none"
         style={{
           background:
-            templateId === "enose"
+            isCustom
+              ? resolvedCustomTemplate?.themeColor || "#0E1626"
+              : templateId === "enose"
               ? "#FFF5ED"
               : templateId === "eko"
               ? "#000000"
@@ -799,6 +881,13 @@ export function FlyerCanvas({
               )}
             </g>
           </g>
+        )}
+
+        {/* ========================================================= */}
+        {/* TEMPLATE 4+: CUSTOM SAVED TEMPLATES                       */}
+        {/* ========================================================= */}
+        {isCustom && processedCustomSvgInner && (
+          <g dangerouslySetInnerHTML={{ __html: processedCustomSvgInner }} />
         )}
       </svg>
     </div>

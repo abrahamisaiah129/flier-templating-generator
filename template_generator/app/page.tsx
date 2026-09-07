@@ -24,6 +24,7 @@ import { HistoryView } from "../components/HistoryView";
 import { DashboardView } from "../components/DashboardView";
 import { ReviewAndKitView } from "../components/ReviewAndKitView";
 import { SettingsModal } from "../components/SettingsModal";
+import { SvgConverterView } from "../components/SvgConverterView";
 import { DEFAULT_SETTINGS } from "../utils/constants";
 
 export default function Home() {
@@ -165,6 +166,16 @@ export default function Home() {
               onOpenProperty={handleOpenProperty}
               onNewProperty={() => setActiveView("new")}
               onDeleteProperty={handleDeleteProperty}
+            />
+          )}
+
+          {activeView === "converter" && (
+            <SvgConverterView
+              settings={settings}
+              onUseTemplate={(templateId) => {
+                setCurrentTemplateId(templateId);
+                setActiveView("new");
+              }}
             />
           )}
 

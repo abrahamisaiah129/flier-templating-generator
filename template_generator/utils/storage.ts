@@ -1,4 +1,4 @@
-import { AppSettings, PropertyItem } from "../types/propkit";
+import { AppSettings, CustomTemplateItem, PropertyItem } from "../types/propkit";
 import { DEFAULT_SETTINGS, SAMPLE_PROPERTIES } from "./constants";
 
 const PROPS_KEY = "propkit_properties_v2";
@@ -64,5 +64,47 @@ export function saveStoredSettings(settings: AppSettings): void {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch (e) {
     console.error("Failed to save settings", e);
+  }
+}
+
+const CUSTOM_TEMPLATES_KEY = "propkit_custom_templates_v2";
+
+export function getStoredCustomTemplates(): CustomTemplateItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Failed to load custom templates from localStorage", e);
+    return [];
+  }
+}
+
+export function saveStoredCustomTemplate(template: CustomTemplateItem): void {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredCustomTemplates();
+    const idx = list.findIndex((t) => t.id === template.id);
+    let updated: CustomTemplateItem[];
+    if (idx >= 0) {
+      updated = [...list];
+      updated[idx] = template;
+    } else {
+      updated = [template, ...list];
+    }
+    localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error("Failed to save custom template to localStorage", e);
+  }
+}
+
+export function deleteStoredCustomTemplate(id: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredCustomTemplates().filter((t) => t.id !== id);
+    localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error("Failed to delete custom template from localStorage", e);
   }
 }

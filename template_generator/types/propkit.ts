@@ -18,7 +18,18 @@ export interface UploadedImage {
   name: string;
 }
 
-export type TemplateId = "bmi" | "eko" | "enose";
+export type TemplateId = "bmi" | "eko" | "enose" | (string & {});
+
+export interface CustomTemplateItem {
+  id: string;
+  name: string;
+  badge: string;
+  description: string;
+  themeColor: string;
+  accentColor: string;
+  svgMarkup: string;
+  createdAt: string;
+}
 
 export interface PropertyItem {
   id: string;
@@ -38,6 +49,7 @@ export interface AppSettings {
   captionTemplate: string;
   logoUrl: string | null;
   anthropicApiKey?: string;
+  openaiApiKey?: string;
 }
 
-export type ActiveView = "dashboard" | "new" | "history" | "review" | "kit";
+export type ActiveView = "dashboard" | "new" | "converter" | "history" | "review" | "kit";

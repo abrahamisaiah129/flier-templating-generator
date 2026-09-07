@@ -16,10 +16,11 @@ import {
   Eye,
   Images,
 } from "lucide-react";
-import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId } from "../types/propkit";
+import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
 import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
 import { EMPTY_FIELD, TEMPLATES_CONFIG } from "../utils/constants";
 import { generateCaption } from "../utils/extractor";
+import { getStoredCustomTemplates } from "../utils/storage";
 
 interface ReviewAndKitViewProps {
   initialStep: "review" | "kit";
@@ -58,8 +59,29 @@ export function ReviewAndKitView({
 }: ReviewAndKitViewProps) {
   const [step, setStep] = useState<"review" | "kit">(initialStep);
   const [data, setData] = useState<PropertyData>(initialData);
+  const [customTemplates] = useState<CustomTemplateItem[]>(() =>
+    typeof window !== "undefined" ? getStoredCustomTemplates() : []
+  );
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(
     initialTemplateId || "bmi"
+  );
+
+  const allAvailableTemplates = [
+    ...TEMPLATES_CONFIG.map((t) => ({ ...t, isCustom: false })),
+    ...customTemplates.map((c) => ({
+      id: c.id,
+      name: c.name,
+      badge: c.badge || "Custom",
+      themeColor: c.themeColor,
+      accentColor: c.accentColor,
+      description: c.description,
+      isCustom: true,
+      svgMarkup: c.svgMarkup,
+    })),
+  ];
+
+  const currentSelectedCustomTemplate = customTemplates.find(
+    (t) => t.id === selectedTemplate
   );
   const [caption, setCaption] = useState<string>(
     existingCaption || generateCaption(initialData, settings.captionTemplate, settings)
@@ -737,7 +759,7 @@ export function ReviewAndKitView({
             </span>
           </div>
 
-          {/* 3-Template Selection Switcher */}
+          {/* Template Selection Switcher (Official + Saved Custom Templates) */}
           <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
@@ -747,12 +769,12 @@ export function ReviewAndKitView({
                 </span>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                {TEMPLATES_CONFIG.length} Templates
+                {allAvailableTemplates.length} Templates {customTemplates.length > 0 ? `(${customTemplates.length} Custom)` : ""}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {TEMPLATES_CONFIG.map((tmpl) => {
+            <div className={`grid ${allAvailableTemplates.length > 3 ? "grid-cols-2 sm:grid-cols-3 max-h-[280px] overflow-y-auto pr-1" : "grid-cols-3"} gap-2`}>
+              {allAvailableTemplates.map((tmpl) => {
                 const isSelected = selectedTemplate === tmpl.id;
                 return (
                   <button
@@ -775,7 +797,9 @@ export function ReviewAndKitView({
                               : tmpl.accentColor,
                         }}
                       />
-                      <span className="text-[9px] font-extrabold uppercase px-1 py-0.2 rounded bg-slate-100 text-slate-600">
+                      <span className={`text-[9px] font-extrabold uppercase px-1 py-0.2 rounded ${
+                        tmpl.isCustom ? "bg-orange-100 text-[#F26522]" : "bg-slate-100 text-slate-600"
+                      }`}>
                         {tmpl.badge}
                       </span>
                     </div>
@@ -868,6 +892,7 @@ export function ReviewAndKitView({
             svgRef={svgRef}
             primaryImage={currentActiveImage}
             templateId={selectedTemplate}
+            customTemplate={currentSelectedCustomTemplate}
           />
         </div>
       </div>
@@ -901,6 +926,7 @@ export function ReviewAndKitView({
               settings={settings}
               primaryImage={img.url}
               templateId={selectedTemplate}
+              customTemplate={currentSelectedCustomTemplate}
             />
           </div>
         ))}

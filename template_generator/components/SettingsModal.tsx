@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { X, Upload, DollarSign, Image as ImageIcon, FileText, Phone } from "lucide-react";
+import { X, Upload, DollarSign, Image as ImageIcon, FileText, Phone, Sparkles } from "lucide-react";
 import { AppSettings } from "../types/propkit";
 import { FIXED_CONTACT } from "../utils/constants";
 
@@ -156,6 +156,26 @@ export function SettingsModal({
             <p className="text-[11px] text-slate-400 mt-2">
               Tags: {"{{opening}}, {{bedrooms}}, {{property_type}}, {{location}}, {{price_naira}}, {{price_usd}}, {{documentation}}, {{phone}}, {{website}}, {{email}}, {{instagram}}"}
             </p>
+          </div>
+
+          {/* OpenAI API Key for SVG to Template Generator */}
+          <div className="bg-[#F4F9F9] rounded-2xl p-5 border border-slate-200/80">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={18} className="text-[#1B494E]" />
+              <label className="text-xs font-bold uppercase tracking-wider text-[#1B494E]">
+                OpenAI API Key (Optional)
+              </label>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Custom key for the SVG to Code / Template Generator. If omitted, the server default or built-in parser is used.
+            </p>
+            <input
+              type="password"
+              value={settings.openaiApiKey || ""}
+              onChange={(e) => onSaveSettings({ ...settings, openaiApiKey: e.target.value })}
+              placeholder="sk-..."
+              className="w-full py-2.5 px-3.5 rounded-xl bg-white border border-slate-200 text-sm font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20"
+            />
           </div>
 
           {/* Fixed Footer Constants */}
