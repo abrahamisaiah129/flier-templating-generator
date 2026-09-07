@@ -1,16 +1,30 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, Filter, Image as ImageIcon, PlusCircle, ArrowRight, Trash2, Images } from "lucide-react";
-import { PropertyItem } from "../types/propkit";
+import {
+  Search,
+  Filter,
+  Image as ImageIcon,
+  PlusCircle,
+  ArrowRight,
+  Trash2,
+  Images,
+  Sparkles,
+  ChevronDown,
+  Palette,
+} from "lucide-react";
+import { PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
 import { formatNaira } from "../utils/extractor";
-import { STATUS_COLORS } from "../utils/constants";
+import { STATUS_COLORS, TEMPLATES_CONFIG } from "../utils/constants";
+import { getStoredCustomTemplates } from "../utils/storage";
+import { TemplateSelectorModal } from "./TemplateSelectorModal";
 
 interface HistoryViewProps {
   properties: PropertyItem[];
   onOpenProperty: (prop: PropertyItem) => void;
   onNewProperty: () => void;
   onDeleteProperty: (id: string) => void;
+  onUpdatePropertyTemplate?: (id: string, templateId: TemplateId) => void;
 }
 
 export function HistoryView({
@@ -18,10 +32,41 @@ export function HistoryView({
   onOpenProperty,
   onNewProperty,
   onDeleteProperty,
+  onUpdatePropertyTemplate,
 }: HistoryViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [modalPropId, setModalPropId] = useState<string | null>(null);
+
+  const customTemplates: CustomTemplateItem[] =
+    typeof window !== "undefined" ? getStoredCustomTemplates() : [];
+
+  const getTemplateInfo = (templateId?: TemplateId) => {
+    if (!templateId || templateId === "bmi") {
+      return { name: "BMI Signature", badge: "Signature", isCustom: false, themeColor: "#0E1626" };
+    }
+    if (templateId === "eko") {
+      return { name: "Eko Luxury", badge: "Luxury Light", isCustom: false, themeColor: "#F4F9F9" };
+    }
+    if (templateId === "enose") {
+      return { name: "Enose Luxury", badge: "Warm Editorial", isCustom: false, themeColor: "#2A1810" };
+    }
+    const official = TEMPLATES_CONFIG.find((t) => t.id === templateId);
+    if (official) {
+      return { name: official.name, badge: official.badge, isCustom: false, themeColor: official.themeColor };
+    }
+    const custom = customTemplates.find((c) => c.id === templateId);
+    if (custom) {
+      return {
+        name: custom.name || "Custom Template",
+        badge: custom.badge || "Custom Style",
+        isCustom: true,
+        themeColor: custom.themeColor || "#1B494E",
+      };
+    }
+    return { name: "Custom Template", badge: "Custom Style", isCustom: true, themeColor: "#1B494E" };
+  };
 
   const filteredProperties = useMemo(() => {
     return properties.filter((p) => {
@@ -133,6 +178,7 @@ export function HistoryView({
           {filteredProperties.map((p) => {
             const primaryImg = p.images?.find((img) => img.id === p.primaryId) || p.images?.[0];
             const statusColor = (STATUS_COLORS as Record<string, string>)[p.status] || "#64748B";
+            const tpl = getTemplateInfo(p.templateId);
 
             return (
               <div
@@ -155,21 +201,39 @@ export function HistoryView({
                     </div>
                   )}
 
-                  {/* Status Badge & Template Badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                  {/* Status Badge & Interactive Template Badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap max-w-[75%] z-10">
                     <span
                       className="px-2.5 py-1 rounded-full text-[11px] font-extrabold text-white shadow-xs"
                       style={{ backgroundColor: statusColor }}
                     >
                       {p.status}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-black/60 text-white backdrop-blur-xs">
-                      {p.templateId === "eko"
-                        ? "Eko Luxury"
-                        : p.templateId === "enose"
-                        ? "Enose Luxury"
-                        : "BMI Signature"}
-                    </span>
+
+                    {/* Clickable Template Badge to switch template */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalPropId(p.id);
+                      }}
+                      className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-black/75 hover:bg-black text-white backdrop-blur-xs flex items-center gap-1.5 transition-transform duration-150 ease-out active:scale-95 cursor-pointer border border-white/15 hover:border-white/40 shadow-xs group/tpl"
+                      title="Click to switch flyer template"
+                    >
+                      {tpl.isCustom ? (
+                        <Sparkles size={10} className="text-amber-400 shrink-0" />
+                      ) : (
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0 border border-white/40"
+                          style={{ backgroundColor: tpl.themeColor }}
+                        />
+                      )}
+                      <span className="truncate max-w-[95px]">{tpl.name}</span>
+                      <ChevronDown
+                        size={10}
+                        className="text-slate-300 group-hover/tpl:translate-y-0.5 transition-transform shrink-0"
+                      />
+                    </button>
                   </div>
 
                   <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-black/70 text-white backdrop-blur-xs flex items-center gap-1">
@@ -188,7 +252,7 @@ export function HistoryView({
                         onDeleteProperty(p.id);
                       }
                     }}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                     title="Delete property"
                   >
                     <Trash2 size={13} />
@@ -217,9 +281,20 @@ export function HistoryView({
                     </div>
                   </div>
 
-                  {/* Card Footer */}
+                  {/* Card Footer with Switch Template Action */}
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                    <span>{new Date(p.createdAt).toLocaleDateString()}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalPropId(p.id);
+                      }}
+                      className="text-slate-500 hover:text-[#1B494E] flex items-center gap-1.5 font-semibold transition-colors cursor-pointer group/switch"
+                      title="Switch flyer template for this property"
+                    >
+                      <Palette size={13} className="text-slate-400 group-hover/switch:text-[#1B494E] transition-colors" />
+                      <span>Switch Template</span>
+                    </button>
                     <span className="font-bold text-[#F26522] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                       View Kit <ArrowRight size={13} />
                     </span>
@@ -229,6 +304,25 @@ export function HistoryView({
             );
           })}
         </div>
+      )}
+
+      {/* Template Selector Modal for Historical Property Re-theming */}
+      {modalPropId && (
+        <TemplateSelectorModal
+          isOpen={!!modalPropId}
+          onClose={() => setModalPropId(null)}
+          selectedTemplateId={
+            properties.find((p) => p.id === modalPropId)?.templateId || "bmi"
+          }
+          onSelectTemplate={(newTemplateId) => {
+            if (modalPropId && onUpdatePropertyTemplate) {
+              onUpdatePropertyTemplate(modalPropId, newTemplateId);
+            }
+            setModalPropId(null);
+          }}
+          title="Change Property Template"
+          subtitle="Select an official flyer layout or one of your custom-created templates"
+        />
       )}
     </div>
   );

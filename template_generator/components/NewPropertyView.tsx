@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   UploadCloud,
   CheckCircle2,
@@ -13,14 +13,25 @@ import {
   X,
   Link as LinkIcon,
   Sparkles,
+  Layout,
+  Palette,
 } from "lucide-react";
-import { UploadedImage } from "../types/propkit";
+import { UploadedImage, TemplateId, CustomTemplateItem } from "../types/propkit";
+import { TEMPLATES_CONFIG } from "../utils/constants";
+import { getStoredCustomTemplates } from "../utils/storage";
 import { parseDocumentText } from "../utils/documentParser";
+import { TemplateSelectorModal } from "./TemplateSelectorModal";
 
 interface NewPropertyViewProps {
-  onStartExtraction: (briefs: string[], images: UploadedImage[], briefUrl?: string) => Promise<void>;
+  onStartExtraction: (
+    briefs: string[],
+    images: UploadedImage[],
+    briefUrl?: string,
+    templateId?: TemplateId
+  ) => Promise<void>;
   extracting: boolean;
   error?: string | null;
+  initialTemplateId?: TemplateId;
 }
 
 function uid(): string {
@@ -40,6 +51,7 @@ export function NewPropertyView({
   onStartExtraction,
   extracting,
   error,
+  initialTemplateId = "bmi",
 }: NewPropertyViewProps) {
   // Up to 3 briefs supported - auto-ingests from ?brief=...
   const [briefs, setBriefs] = useState<string[]>(() => {
@@ -86,6 +98,42 @@ export function NewPropertyView({
   const [primaryId, setPrimaryId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Stage 1 Template Selection state
+  const [selectedTemplateId, setSelectedTemplateId] = useState<TemplateId>(
+    initialTemplateId || "bmi"
+  );
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const customTemplates: CustomTemplateItem[] =
+    typeof window !== "undefined" ? getStoredCustomTemplates() : [];
+
+  const currentTemplate = useMemo(() => {
+    const all = [
+      ...TEMPLATES_CONFIG.map((t) => ({
+        id: t.id,
+        name: t.name,
+        badge: t.badge,
+        themeColor: t.themeColor,
+        description: t.description,
+      })),
+      ...customTemplates.map((c) => ({
+        id: c.id,
+        name: c.name,
+        badge: c.badge || "Custom Template",
+        themeColor: c.themeColor || "#0E1626",
+        description: c.description || "Custom SVG flyer template from your personal library",
+      })),
+    ];
+    return (
+      all.find((t) => t.id === selectedTemplateId) || {
+        id: "bmi",
+        name: "BMI Signature",
+        badge: "Figma Official",
+        themeColor: "#0B2854",
+        description: "Buy 'n' Move In composite card with bedroom counter",
+      }
+    );
+  }, [selectedTemplateId, customTemplates.length]);
 
   // Smart Brief Assistant state
   const [showBriefAssistant, setShowBriefAssistant] = useState(false);
@@ -297,7 +345,7 @@ export function NewPropertyView({
       }
     }
 
-    await onStartExtraction(briefs, reorderedImages, briefUrl);
+    await onStartExtraction(briefs, reorderedImages, briefUrl, selectedTemplateId);
   };
 
   return (
@@ -629,6 +677,60 @@ export function NewPropertyView({
         </div>
       </div>
 
+      {/* Stage 1 Flyer Template Selection */}
+      <div className="mb-7">
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+            Flyer Design Template
+          </label>
+          <span className="text-xs font-semibold text-slate-500">
+            {customTemplates.length > 0
+              ? `${3 + customTemplates.length} templates available`
+              : "3 official templates available"}
+          </span>
+        </div>
+
+        <div
+          onClick={() => setTemplateModalOpen(true)}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-[#1B494E]/60 shadow-xs hover:shadow-sm cursor-pointer transition-all duration-150 group"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-black/10 shadow-2xs group-hover:scale-105 transition-transform duration-150 motion-reduce:transform-none"
+              style={{ backgroundColor: currentTemplate.themeColor }}
+            >
+              <Layout size={20} className="text-white" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm sm:text-base font-extrabold text-[#1B494E] group-hover:text-[#F26522] transition-colors">
+                  {currentTemplate.name}
+                </h4>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 shrink-0">
+                  {currentTemplate.badge}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 truncate mt-0.5">
+                {currentTemplate.description || "Selected template for flyer rendering"}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setTemplateModalOpen(true);
+            }}
+            className="self-start sm:self-auto shrink-0 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-[#1B494E] text-slate-700 hover:text-white font-bold text-xs flex items-center gap-2 transition-all duration-150 ease-out active:scale-[0.98] motion-reduce:transform-none cursor-pointer shadow-2xs"
+          >
+            <Palette size={14} />
+            <span>Change Template</span>
+          </button>
+        </div>
+      </div>
+
       {/* Upload Property Image Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
@@ -821,6 +923,14 @@ export function NewPropertyView({
           )}
         </button>
       </div>
+
+      {/* Template Selector Modal Popup */}
+      <TemplateSelectorModal
+        isOpen={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        selectedTemplateId={selectedTemplateId}
+        onSelectTemplate={(id) => setSelectedTemplateId(id)}
+      />
     </div>
   );
 }

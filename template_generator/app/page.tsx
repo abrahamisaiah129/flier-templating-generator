@@ -58,7 +58,8 @@ export default function Home() {
   const handleStartExtraction = async (
     briefs: string[],
     images: UploadedImage[],
-    briefUrl?: string
+    briefUrl?: string,
+    templateId?: TemplateId
   ) => {
     setExtracting(true);
     setExtractError(null);
@@ -78,6 +79,9 @@ export default function Home() {
       setCurrentReviewData(extracted);
       setCurrentImages(images);
       setCurrentPrimaryId(images.length > 0 ? images[0].id : null);
+      if (templateId) {
+        setCurrentTemplateId(templateId);
+      }
       setCurrentBriefText(combinedBriefText);
       setCurrentBriefUrl(briefUrl || "");
       setExistingId(undefined);
@@ -99,6 +103,15 @@ export default function Home() {
   const handleDeleteProperty = (id: string) => {
     deleteStoredProperty(id);
     setProperties(getStoredProperties());
+  };
+
+  const handleUpdatePropertyTemplate = (id: string, templateId: TemplateId) => {
+    const existing = properties.find((p) => p.id === id);
+    if (existing) {
+      const updated: PropertyItem = { ...existing, templateId };
+      saveStoredProperty(updated);
+      setProperties(getStoredProperties());
+    }
   };
 
   const handleOpenProperty = (prop: PropertyItem) => {
@@ -157,6 +170,7 @@ export default function Home() {
               onStartExtraction={handleStartExtraction}
               extracting={extracting}
               error={extractError}
+              initialTemplateId={currentTemplateId}
             />
           )}
 
@@ -166,6 +180,7 @@ export default function Home() {
               onOpenProperty={handleOpenProperty}
               onNewProperty={() => setActiveView("new")}
               onDeleteProperty={handleDeleteProperty}
+              onUpdatePropertyTemplate={handleUpdatePropertyTemplate}
             />
           )}
 
