@@ -51,9 +51,11 @@ function injectPropertyDataIntoSvg(
     res = res.split(token).join(value);
   }
 
-  // Primary image tokens
+  // Primary image tokens (Image 1)
   const pImg = primaryImage || "";
   res = res.split("{{image}}").join(pImg);
+  res = res.split("{{image_1}}").join(pImg);
+  res = res.split("{{image_0}}").join(pImg);
   res = res.split("{{image_url}}").join(pImg);
   res = res.split("{{primary_image}}").join(pImg);
   res = res.split("{{background_image}}").join(pImg);
@@ -62,6 +64,7 @@ function injectPropertyDataIntoSvg(
   // Secondary image tokens
   const sImg1 = secondaryImages[0] || pImg;
   const sImg2 = secondaryImages[1] || sImg1 || pImg;
+  const sImg3 = secondaryImages[2] || sImg2 || pImg;
   res = res.split("{{image_2}}").join(sImg1);
   res = res.split("{{secondary_image}}").join(sImg1);
   res = res.split("{{secondary_image_1}}").join(sImg1);
@@ -69,6 +72,7 @@ function injectPropertyDataIntoSvg(
   res = res.split("{{image_3}}").join(sImg2);
   res = res.split("{{secondary_image_2}}").join(sImg2);
   res = res.split("{{thumbnail_2}}").join(sImg2);
+  res = res.split("{{image_4}}").join(sImg3);
 
   // Ensure all <image> tags have crossOrigin="anonymous" and both href/xlink:href
   let imgIndex = 0;

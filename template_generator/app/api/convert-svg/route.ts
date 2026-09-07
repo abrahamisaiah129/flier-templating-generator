@@ -55,6 +55,26 @@ function cleanSvgAttributes(svg: string, isReact: boolean, useCurrentColor: bool
     }
   }
 
+  // Index images sequentially so every field receives its required token
+  let imgIdx = 0;
+  res = res.replace(/<image\b([\s\S]*?)(\/?>)/gi, (match, attrs, close) => {
+    imgIdx++;
+    const token = imgIdx === 1 ? "{{image_1}}" : `{{image_${imgIdx}}}`;
+    let clean = attrs;
+    if (!clean.includes("crossOrigin") && !clean.includes("crossorigin")) {
+      clean += ' crossOrigin="anonymous"';
+    }
+    if (!clean.includes("preserveAspectRatio")) {
+      clean += ' preserveAspectRatio="xMidYMid slice"';
+    }
+    if (/(?:href|xlink:href)=/i.test(clean)) {
+      clean = clean.replace(/(?:href|xlink:href)=["'][^"']*["']/gi, `href="${token}" xlink:href="${token}"`);
+    } else {
+      clean += ` href="${token}" xlink:href="${token}"`;
+    }
+    return `<image${clean}${close}`;
+  });
+
   return res.trim();
 }
 
@@ -224,14 +244,24 @@ export async function POST(req: NextRequest) {
                 content: `You are an expert utility that turns raw SVG strings into a clean real-estate flyer template component.
 The user is non-technical, so you create a clean reusable flyer template.
 Strip editor junk (Figma/Sketch/Inkscape metadata, XML declarations, doctypes, comments, sodipodi).
+
+CRITICAL IMAGE INDEXING RULES:
+- Carefully index each image container in the SVG so the user knows which image is selected and can upload an image into it, preventing any field from rendering blank.
+- Primary / Hero Background Photo: Set href="{{image_1}}" and xlink:href="{{image_1}}" (or {{image}} / {{primary_image}}).
+- Secondary Photo 1 (or thumbnail 1): Set href="{{image_2}}" and xlink:href="{{image_2}}".
+- Secondary Photo 2 (or thumbnail 2): Set href="{{image_3}}" and xlink:href="{{image_3}}".
+- Ensure all <image> tags have crossOrigin="anonymous" and preserveAspectRatio="xMidYMid slice".
+- If <pattern> or <use xlink:href="#image..."> is used, make sure the referenced <image> has the indexed placeholder so that every field receives its required input and is not blank.
+
 Return a JSON object with:
 - "template": clean React component code
-- "svgMarkup": clean raw SVG markup with xmlns attributes preserved
+- "svgMarkup": clean raw SVG markup with xmlns attributes preserved and image tokens indexed ({{image_1}}, {{image_2}}, etc.)
 - "templateName": clean luxury property template name (e.g. "${componentName || "Signature Luxury Flyer"}")
 - "themeColor": dominant hex color (e.g. "${defaultTheme}")
 - "accentColor": secondary vibrant hex color (e.g. "${defaultAccent}")
 - "badge": short style tag (e.g. "Custom Style", "Minimalist", "Editorial")
 - "description": 1-line description of the flyer layout style
+- "imageSlots": array of indexed image slots [{"index": 1, "role": "Main Hero Cover", "token": "{{image_1}}"}, ...]
 Return ONLY valid raw JSON with NO markdown code fences.`,
               },
               {
@@ -262,6 +292,7 @@ Return ONLY valid raw JSON with NO markdown code fences.`,
                 accentColor: parsed.accentColor || defaultAccent,
                 badge: parsed.badge || "Custom Template",
                 description: parsed.description || "Custom SVG flyer template generated and added to library",
+                imageSlots: parsed.imageSlots || [{ index: 1, role: "Main Property Cover", token: "{{image_1}}" }],
                 source: "openrouter" as const,
               });
             }
@@ -276,6 +307,7 @@ Return ONLY valid raw JSON with NO markdown code fences.`,
                 accentColor: defaultAccent,
                 badge: "Custom Template",
                 description: "Custom SVG flyer template generated and added to library",
+                imageSlots: [{ index: 1, role: "Main Property Cover", token: "{{image_1}}" }],
                 source: "openrouter" as const,
               });
             }
