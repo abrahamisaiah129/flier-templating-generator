@@ -332,7 +332,7 @@ export function FlyerCanvas({
         </defs>
 
         {/* ========================================================= */}
-        {/* TEMPLATE 1: BMI SIGNATURE TEMPLATE (Figma Official)       */}
+        {/* TEMPLATE 1: BMI SIGNATURE TEMPLATE                         */}
         {/* ========================================================= */}
         {templateId === "bmi" && (
           <g>

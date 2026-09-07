@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, CheckCircle2, Layout, Wand2, Sparkles } from "lucide-react";
+import { X, CheckCircle2, Layout, Wand2, Sparkles, Trash2 } from "lucide-react";
 import { TemplateId, CustomTemplateItem } from "../types/propkit";
 import { TEMPLATES_CONFIG } from "../utils/constants";
-import { getStoredCustomTemplates } from "../utils/storage";
+import { getStoredCustomTemplates, deleteStoredCustomTemplate } from "../utils/storage";
 
 interface TemplateSelectorModalProps {
   isOpen: boolean;
@@ -24,8 +24,9 @@ export function TemplateSelectorModal({
   subtitle = "Select an official layout or one of your custom-created templates",
 }: TemplateSelectorModalProps) {
   const [activeTab, setActiveTab] = useState<"all" | "official" | "custom">("all");
-  const customTemplates: CustomTemplateItem[] =
-    typeof window !== "undefined" ? getStoredCustomTemplates() : [];
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplateItem[]>(() =>
+    typeof window !== "undefined" ? getStoredCustomTemplates() : []
+  );
 
   if (!isOpen) return null;
 
@@ -174,25 +175,50 @@ export function TemplateSelectorModal({
                             className="w-2.5 h-2.5 rounded-full border border-black/10 shrink-0 shadow-2xs -ml-1.5"
                             style={{ backgroundColor: tmpl.accentColor }}
                           />
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                            {tmpl.badge}
-                          </span>
+                          {tmpl.badge ? (
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                              {tmpl.badge}
+                            </span>
+                          ) : null}
                         </div>
 
-                        {isSelected && (
-                          <span className="w-5 h-5 rounded-full bg-[#1B494E] text-white flex items-center justify-center shrink-0">
-                            <CheckCircle2 size={14} />
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {tmpl.isCustom && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete custom template "${tmpl.name}" from your storage library?`)) {
+                                  deleteStoredCustomTemplate(tmpl.id);
+                                  setCustomTemplates(getStoredCustomTemplates());
+                                  if (selectedTemplateId === tmpl.id) {
+                                    onSelectTemplate("bmi");
+                                  }
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                              title="Delete template from storage"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                          {isSelected && (
+                            <span className="w-5 h-5 rounded-full bg-[#1B494E] text-white flex items-center justify-center shrink-0">
+                              <CheckCircle2 size={14} />
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Title & Description */}
                       <h4 className="font-extrabold text-[#1B494E] text-base group-hover:text-[#F26522] transition-colors">
                         {tmpl.name}
                       </h4>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                        {tmpl.description}
-                      </p>
+                      {tmpl.description ? (
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                          {tmpl.description}
+                        </p>
+                      ) : null}
                     </div>
 
                     {/* Bottom Indicator */}

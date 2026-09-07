@@ -214,10 +214,10 @@ export const TEMPLATES_CONFIG: TemplateConfig[] = [
   {
     id: "bmi",
     name: "BMI Signature",
-    badge: "Figma Official",
+    badge: "",
     themeColor: "#0B2854",
     accentColor: "#F26522",
-    description: "Buy 'n' Move In composite card with bedroom counter & doc strip",
+    description: "",
   },
   {
     id: "eko",
