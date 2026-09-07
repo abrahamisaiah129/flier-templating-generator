@@ -146,9 +146,7 @@ export function NewPropertyView({
   const [isDraggingDoc, setIsDraggingDoc] = useState(false);
   const docFileInputRef = useRef<HTMLInputElement>(null);
 
-  const maxImages = briefs.length;
-  const remainingImages = Math.max(0, maxImages - images.length);
-  const isImageComplete = images.length >= maxImages && maxImages > 0;
+  const isImageComplete = images.length > 0;
 
   const handleBriefChange = (index: number, val: string) => {
     setBriefs((prev) => {
@@ -329,7 +327,7 @@ export function NewPropertyView({
     }
 
     if (images.length === 0) {
-      setLocalError(`Please upload at least 1 property image (${briefs.length} required for ${briefs.length} brief${briefs.length > 1 ? "s" : ""}).`);
+      setLocalError("Please upload at least 1 property image.");
       return;
     }
 
@@ -738,7 +736,9 @@ export function NewPropertyView({
             Upload Property Image
           </label>
           <span className="text-xs font-semibold text-slate-500">
-            {images.length} of {maxImages} uploaded ({briefs.length} {briefs.length === 1 ? "brief" : "briefs"})
+            {images.length > 0
+              ? `${images.length} ${images.length === 1 ? "image" : "images"} uploaded`
+              : "JPG, PNG, or WEBP"}
           </span>
         </div>
 
@@ -751,58 +751,44 @@ export function NewPropertyView({
               e.preventDefault();
               handleImageFiles(e.dataTransfer.files);
             }}
-            className="border-2 border-dashed border-slate-300 hover:border-[#1B494E]/50 rounded-xl p-9 bg-white/50 hover:bg-white text-center cursor-pointer transition-all group"
+            className="border-2 border-dashed border-slate-300 hover:border-[#1B494E]/50 rounded-xl p-8 bg-white/50 hover:bg-white text-center cursor-pointer transition-all group"
           >
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#E6EEEE]/80 flex items-center justify-center text-slate-600 group-hover:text-[#1B494E] group-hover:scale-105 transition-all">
               <UploadCloud size={24} />
             </div>
             <p className="text-sm font-semibold text-slate-700 group-hover:text-[#1B494E]">
-              Drag & drop {maxImages > 1 ? `${maxImages} property images` : "property image"} here, or click to browse
+              Drag & drop property image here, or click to browse
             </p>
-            <p className="text-xs font-medium text-slate-500 mt-1">
-              {maxImages === 1
-                ? "1 brief = 1 property image required → 1 output flyer"
-                : `${maxImages} briefs = ${maxImages} property images required (1 image per brief)`}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              1 image uploaded = 1 output image · 2 images uploaded = 2 separate output images
+            <p className="text-xs text-slate-400 mt-1">
+              Supports JPG, PNG, or WEBP (high-resolution recommended)
             </p>
           </div>
         ) : (
-          /* State B: Dynamic Progress Banner + Thumbnails */
+          /* State B: Thumbnails Gallery + Add Button */
           <div className="space-y-4">
             {/* Status Banner */}
-            <div
-              className={`text-white py-4 px-6 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm transition-colors ${
-                isImageComplete ? "bg-[#1B494E]" : "bg-[#163E42]"
-              }`}
-            >
+            <div className="text-white py-3 px-5 rounded-xl bg-[#1B494E] flex items-center justify-between gap-3 shadow-sm transition-colors">
               <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#F26522] flex items-center justify-center text-white flex-shrink-0">
-                  <CheckCircle2 size={18} />
+                <div className="w-6 h-6 rounded-full bg-[#F26522] flex items-center justify-center text-white flex-shrink-0">
+                  <CheckCircle2 size={15} />
                 </div>
                 <div>
                   <span className="font-bold text-sm tracking-wide block">
-                    {isImageComplete
-                      ? "Image completed"
-                      : `${images.length} ${images.length === 1 ? "image" : "images"} completed, remaining ${remainingImages}`}
+                    {images.length === 1 ? "1 image uploaded" : `${images.length} images uploaded`}
                   </span>
-                  <span className="text-xs text-teal-100 font-medium block">
-                    {isImageComplete
-                      ? images.length === 1
-                        ? "1 image uploaded → 1 output image using the template"
-                        : images.length === 2
-                        ? "2 images uploaded → 2 separate output images using the template"
-                        : `${images.length} images uploaded → ${images.length} separate output images processed individually`
-                      : `${images.length} of ${maxImages} images uploaded · Please upload ${remainingImages} more image to match your ${maxImages} brief${maxImages > 1 ? "s" : ""}`}
+                  <span className="text-xs text-teal-100/80 font-medium block">
+                    Ready to generate flyer
                   </span>
                 </div>
               </div>
-              <span className="self-start sm:self-auto text-xs font-extrabold px-3 py-1 bg-white/10 rounded-full border border-white/20 whitespace-nowrap">
-                {isImageComplete
-                  ? `${images.length} ${images.length === 1 ? "Output Flyer" : "Separate Outputs"} Ready`
-                  : `${images.length} / ${maxImages} Uploaded`}
-              </span>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-bold px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg border border-white/20 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus size={13} />
+                <span>Add More</span>
+              </button>
             </div>
 
             {/* Thumbnails Gallery */}
@@ -822,10 +808,10 @@ export function NewPropertyView({
                       className="w-full h-32 object-cover block"
                     />
 
-                    {/* Output Number Tag & Primary Indicator */}
+                    {/* Image Number Tag & Primary Indicator */}
                     <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
-                      <div className="bg-[#1B494E]/90 backdrop-blur-xs text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-xs">
-                        Output #{idx + 1}
+                      <div className="bg-black/65 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
+                        Photo #{idx + 1}
                       </div>
                       {isPrimary ? (
                         <div className="bg-[#F26522] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
@@ -861,28 +847,16 @@ export function NewPropertyView({
                 );
               })}
 
-              {/* Add remaining button if slots exist */}
-              {!isImageComplete ? (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="h-32 rounded-xl border-2 border-dashed border-orange-300 hover:border-[#F26522] bg-orange-50/20 hover:bg-orange-50/60 flex flex-col items-center justify-center text-slate-600 hover:text-[#F26522] transition-colors p-2 text-center cursor-pointer group"
-                >
-                  <Plus size={22} className="mb-1 text-[#F26522] group-hover:scale-110 transition-transform duration-150" />
-                  <span className="text-xs font-bold text-slate-700">Add remaining</span>
-                  <span className="text-[10px] text-orange-600 font-semibold mt-0.5">
-                    ({remainingImages} {remainingImages === 1 ? "image" : "images"} left)
-                  </span>
-                </button>
-              ) : (
-                <div className="h-32 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/30 flex flex-col items-center justify-center text-emerald-800 p-2 text-center select-none">
-                  <CheckCircle2 size={22} className="mb-1 text-emerald-600" />
-                  <span className="text-xs font-bold">Image completed</span>
-                  <span className="text-[10px] text-emerald-600/80 mt-0.5 font-medium">
-                    {maxImages} of {maxImages} briefs matched
-                  </span>
-                </div>
-              )}
+              {/* Add Photo Button Tile */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="h-32 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1B494E] bg-slate-50/50 hover:bg-slate-50 flex flex-col items-center justify-center text-slate-500 hover:text-[#1B494E] transition-colors p-2 text-center cursor-pointer group"
+              >
+                <Plus size={22} className="mb-1 text-slate-400 group-hover:text-[#1B494E] group-hover:scale-110 transition-transform duration-150" />
+                <span className="text-xs font-bold text-slate-700">Add Photo</span>
+                <span className="text-[10px] text-slate-400 font-medium mt-0.5">JPG, PNG, WEBP</span>
+              </button>
             </div>
           </div>
         )}
@@ -890,7 +864,7 @@ export function NewPropertyView({
         <input
           ref={fileInputRef}
           type="file"
-          multiple={remainingImages > 1}
+          multiple
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={(e) => handleImageFiles(e.target.files)}

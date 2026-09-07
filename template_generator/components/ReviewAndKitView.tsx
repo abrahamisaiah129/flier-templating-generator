@@ -745,13 +745,7 @@ export function ReviewAndKitView({
                 Live Flyer Preview
               </span>
               <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#1B494E] text-white">
-                {images.length === 0
-                  ? "1 Output"
-                  : images.length === 1
-                  ? "1 Output Flyer"
-                  : images.length === 2
-                  ? "2 Separate Outputs"
-                  : `${images.length} Outputs (Individual)`}
+                {images.length <= 1 ? "1 Flyer" : `${images.length} Flyers`}
               </span>
             </div>
             <span className="text-[11px] font-semibold text-slate-400">
@@ -825,10 +819,10 @@ export function ReviewAndKitView({
                   </div>
                   <div>
                     <div className="text-xs font-extrabold text-[#1B494E] leading-tight">
-                      Output Flyer {safeActiveIndex + 1} of {images.length}
+                      Flyer {safeActiveIndex + 1} of {images.length}
                     </div>
                     <div className="text-[10px] text-slate-500">
-                      Processed individually · {selectedTemplate.toUpperCase()}
+                      {selectedTemplate.toUpperCase()} Template
                     </div>
                   </div>
                 </div>
