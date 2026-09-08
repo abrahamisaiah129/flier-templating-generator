@@ -12,14 +12,12 @@ import {
   AlertCircle,
   X,
   Link as LinkIcon,
-  Sparkles,
   Layout,
   Palette,
 } from "lucide-react";
 import { UploadedImage, TemplateId, CustomTemplateItem } from "../types/propkit";
 import { TEMPLATES_CONFIG } from "../utils/constants";
 import { getStoredCustomTemplates } from "../utils/storage";
-import { parseDocumentText } from "../utils/documentParser";
 import { TemplateSelectorModal } from "./TemplateSelectorModal";
 
 interface NewPropertyViewProps {
@@ -135,19 +133,14 @@ export function NewPropertyView({
     );
   }, [selectedTemplateId, customTemplates.length]);
 
-  // Unified Assistant & Brief URL state
-  const [activeAssistantTab, setActiveAssistantTab] = useState<"writeup" | "url" | null>(null);
-  const [uploadedDocName, setUploadedDocName] = useState<string | null>(null);
-  const [uploadedDocSize, setUploadedDocSize] = useState<string | null>(null);
-  const [writeupText, setWriteupText] = useState("");
-  const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
-  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
-  const [isDraggingDoc, setIsDraggingDoc] = useState(false);
-  const docFileInputRef = useRef<HTMLInputElement>(null);
-
   // Slot-based indexed image upload state
   const [activeUploadSlot, setActiveUploadSlot] = useState<number | null>(null);
   const slotFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Brief URL extraction state
+  const [showBriefUrlDrawer, setShowBriefUrlDrawer] = useState(false);
+  const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
 
   const triggerSlotUpload = (idx: number) => {
     setActiveUploadSlot(idx);
@@ -158,7 +151,7 @@ export function NewPropertyView({
   };
 
   const handleSlotImageFile = async (idx: number, fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return;
+    if (!fileList || fileList.length === 0 || idx >= 3) return;
     const file = fileList[0];
     if (!/image\/(jpeg|jpg|png|webp)/i.test(file.type)) {
       setLocalError("Please upload a valid image file (JPG, PNG, or WEBP).");
@@ -173,7 +166,7 @@ export function NewPropertyView({
         if (idx === 0 || !primaryId) {
           setPrimaryId(updated[0]?.id || newImg.id);
         }
-        return updated;
+        return updated.slice(0, 3);
       });
       setLocalError(null);
     } catch (err) {
@@ -231,24 +224,24 @@ export function NewPropertyView({
       return;
     }
 
-    const currentSlots = Math.max(0, briefs.length - images.length);
-    if (currentSlots === 0) {
+    const MAX_ALLOWED = 3;
+    if (images.length >= MAX_ALLOWED) {
       setLocalError(
-        `All ${briefs.length} required image(s) for your ${briefs.length} brief(s) have already been uploaded. The system only takes ${briefs.length} image(s).`
+        "A maximum of 3 images can be uploaded at once. Please delete an image first if you wish to upload another."
       );
       return;
     }
 
-    setLocalError(null);
-
-    // Limit files to remainingSlots
-    const filesToProcess = allowed.slice(0, currentSlots);
-    if (allowed.length > currentSlots) {
+    const remainingSlots = Math.max(0, MAX_ALLOWED - images.length);
+    if (allowed.length > remainingSlots) {
       setLocalError(
-        `Only ${currentSlots} more image allowed for ${briefs.length} brief(s). ${allowed.length - currentSlots} extra file(s) were not added.`
+        `A maximum of 3 images can be uploaded. Only ${remainingSlots} more image(s) could be added.`
       );
+    } else {
+      setLocalError(null);
     }
 
+    const filesToProcess = allowed.slice(0, remainingSlots);
     const newImgs: UploadedImage[] = [];
     for (const f of filesToProcess) {
       try {
@@ -260,7 +253,7 @@ export function NewPropertyView({
     }
 
     setImages((prev) => {
-      const updated = [...prev, ...newImgs].slice(0, briefs.length);
+      const updated = [...prev, ...newImgs].slice(0, MAX_ALLOWED);
       if (!primaryId && updated.length > 0) {
         setPrimaryId(updated[0].id);
       }
@@ -282,43 +275,8 @@ export function NewPropertyView({
     setPrimaryId(id);
   };
 
-  const handleDocFiles = async (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return;
-    const file = fileList[0];
-    const validExts = [".txt", ".docx", ".pdf", ".md", ".rtf", ".csv"];
-    const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
-    if (!validExts.includes(ext) && !file.type.startsWith("text/")) {
-      setLocalError("Unsupported document format. Please upload .txt, .docx, .pdf, .md, or paste text.");
-      return;
-    }
-
-    setLocalError(null);
-    setUploadedDocName(file.name);
-    setUploadedDocSize(
-      file.size > 1024 * 1024
-        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-        : `${Math.round(file.size / 1024)} KB`
-    );
-
-    try {
-      const extractedText = await parseDocumentText(file);
-      setWriteupText(extractedText);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to read file text.";
-      setLocalError(msg);
-    }
-  };
-
-  const handleGenerateBriefWithAi = async (mode?: "writeup" | "url") => {
-    const targetMode = mode || activeAssistantTab || "writeup";
-    const hasWriteup = writeupText.trim().length > 0 || !!uploadedDocName;
-    const hasUrl = briefUrl.trim().length > 0;
-
-    if (targetMode === "writeup" && !hasWriteup) {
-      setLocalError("Please upload a document or paste property notes first.");
-      return;
-    }
-    if (targetMode === "url" && !hasUrl) {
+  const handleGenerateBriefWithAi = async () => {
+    if (!briefUrl.trim()) {
       setLocalError("Please enter a property listing URL first.");
       return;
     }
@@ -332,8 +290,7 @@ export function NewPropertyView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          writeupText: targetMode === "writeup" ? writeupText : undefined,
-          url: targetMode === "url" ? briefUrl : undefined,
+          url: briefUrl,
         }),
       });
 
@@ -345,13 +302,13 @@ export function NewPropertyView({
       if (data.briefs && Array.isArray(data.briefs) && data.briefs.length > 0) {
         setBriefs(data.briefs);
         setAiSuccessMessage(
-          `Brief successfully generated and loaded into Source Brief above.`
+          `Brief successfully generated from listing URL and loaded into Source Brief above.`
         );
       } else {
-        throw new Error("No brief could be generated. Please check your content.");
+        throw new Error("No brief could be generated. Please check your URL.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to generate brief with AI.";
+      const msg = err instanceof Error ? err.message : "Failed to generate brief from listing URL.";
       setLocalError(msg);
     } finally {
       setIsGeneratingBrief(false);
@@ -588,50 +545,32 @@ export function NewPropertyView({
         )}
       </div>
 
-      {/* Smart Brief & URL Tools: Unified Clean Card */}
+      {/* Brief URL Extraction Tool */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs mb-6 transition-all">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <p className="text-xs sm:text-sm font-medium text-slate-700">
-            Extract brief details automatically from a listing link or document write-up.
+            Extract brief details automatically from an online listing URL.
           </p>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveAssistantTab((prev) => (prev === "url" ? null : "url"));
-                setLocalError(null);
-              }}
-              className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all duration-150 ease-out cursor-pointer ${
-                activeAssistantTab === "url"
-                  ? "bg-[#1B494E] text-white shadow-xs"
-                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-              }`}
-            >
-              <LinkIcon size={14} />
-              <span>Brief URL</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveAssistantTab((prev) => (prev === "writeup" ? null : "writeup"));
-                setLocalError(null);
-              }}
-              className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all duration-150 ease-out cursor-pointer ${
-                activeAssistantTab === "writeup"
-                  ? "bg-[#1B494E] text-white shadow-xs"
-                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-              }`}
-            >
-              <Sparkles size={14} />
-              <span>AI Assistant</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowBriefUrlDrawer((prev) => !prev);
+              setLocalError(null);
+            }}
+            className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all duration-150 ease-out cursor-pointer ${
+              showBriefUrlDrawer
+                ? "bg-[#1B494E] text-white shadow-xs"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+            }`}
+          >
+            <LinkIcon size={14} />
+            <span>Brief URL</span>
+          </button>
         </div>
 
-        {/* Tab 1: Brief URL Drawer */}
-        {activeAssistantTab === "url" && (
+        {/* Brief URL Drawer */}
+        {showBriefUrlDrawer && (
           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
             <div className="relative">
               <input
@@ -651,7 +590,7 @@ export function NewPropertyView({
               <button
                 type="button"
                 disabled={isGeneratingBrief || !briefUrl.trim()}
-                onClick={() => handleGenerateBriefWithAi("url")}
+                onClick={handleGenerateBriefWithAi}
                 className="py-2 px-4 rounded-xl bg-[#1B494E] hover:bg-[#14383C] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs flex items-center gap-2 transition-transform duration-150 ease-out active:scale-[0.98] cursor-pointer"
               >
                 {isGeneratingBrief ? (
@@ -661,104 +600,8 @@ export function NewPropertyView({
                   </>
                 ) : (
                   <>
-                    <Sparkles size={13} />
+                    <LinkIcon size={13} />
                     <span>Generate Brief from URL</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: AI Document / Write-up Drawer */}
-        {activeAssistantTab === "writeup" && (
-          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
-            <input
-              ref={docFileInputRef}
-              type="file"
-              accept=".txt,.docx,.pdf,.md,.rtf,.csv,text/plain"
-              className="hidden"
-              onChange={(e) => handleDocFiles(e.target.files)}
-            />
-
-            {!uploadedDocName ? (
-              <div
-                onClick={() => docFileInputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDraggingDoc(true);
-                }}
-                onDragLeave={() => setIsDraggingDoc(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDraggingDoc(false);
-                  handleDocFiles(e.dataTransfer.files);
-                }}
-                className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-150 ${
-                  isDraggingDoc
-                    ? "border-[#1B494E] bg-slate-100"
-                    : "border-slate-200 hover:border-[#1B494E]/50 bg-slate-50/50 hover:bg-slate-50"
-                }`}
-              >
-                <div className="w-8 h-8 mx-auto mb-1.5 rounded-full bg-white shadow-2xs border border-slate-200 flex items-center justify-center text-slate-500">
-                  <UploadCloud size={16} />
-                </div>
-                <p className="text-xs font-semibold text-slate-700">
-                  Click to upload or drag & drop document (.txt, .docx, .pdf)
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                    <FileText size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">{uploadedDocName}</p>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      {uploadedDocSize} • Ready
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUploadedDocName(null);
-                    setUploadedDocSize(null);
-                    setWriteupText("");
-                  }}
-                  className="p-1 text-slate-400 hover:text-red-500 rounded-md hover:bg-white transition-colors cursor-pointer"
-                  title="Remove file"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            )}
-
-            <textarea
-              value={writeupText}
-              onChange={(e) => setWriteupText(e.target.value)}
-              rows={writeupText ? 4 : 2}
-              placeholder="Or paste property writeup, brochure text, or WhatsApp listing message here..."
-              className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20 transition-all resize-y"
-            />
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                disabled={isGeneratingBrief || (!writeupText.trim() && !uploadedDocName)}
-                onClick={() => handleGenerateBriefWithAi("writeup")}
-                className="py-2 px-4 rounded-xl bg-[#1B494E] hover:bg-[#14383C] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs flex items-center gap-2 transition-transform duration-150 ease-out active:scale-[0.98] cursor-pointer"
-              >
-                {isGeneratingBrief ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Extracting brief...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={13} />
-                    <span>Extract Brief from Write-up</span>
                   </>
                 )}
               </button>
@@ -782,74 +625,21 @@ export function NewPropertyView({
         )}
       </div>
 
-      {/* Stage 1 Flyer Template Selection */}
+      {/* Upload Property Image Section (Swapped to come before Flyer Design Template) */}
       <div className="mb-7">
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-            Flyer Design Template
-          </label>
-          <span className="text-xs font-semibold text-slate-500">
-            {customTemplates.length > 0
-              ? `${3 + customTemplates.length} templates available`
-              : "3 official templates available"}
-          </span>
-        </div>
-
-        <div
-          onClick={() => setTemplateModalOpen(true)}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-[#1B494E]/60 shadow-xs hover:shadow-sm cursor-pointer transition-all duration-150 group"
-        >
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-black/10 shadow-2xs group-hover:scale-105 transition-transform duration-150 motion-reduce:transform-none"
-              style={{ backgroundColor: currentTemplate.themeColor }}
-            >
-              <Layout size={20} className="text-white" />
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="text-sm sm:text-base font-extrabold text-[#1B494E] group-hover:text-[#F26522] transition-colors">
-                  {currentTemplate.name}
-                </h4>
-                {currentTemplate.badge ? (
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 shrink-0">
-                    {currentTemplate.badge}
-                  </span>
-                ) : null}
-              </div>
-              {currentTemplate.description ? (
-                <p className="text-xs text-slate-500 truncate mt-0.5">
-                  {currentTemplate.description}
-                </p>
-              ) : null}
-            </div>
+          <div className="flex items-center gap-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+              Upload Property Image
+            </label>
+            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
+              Max 3 images
+            </span>
           </div>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setTemplateModalOpen(true);
-            }}
-            className="self-start sm:self-auto shrink-0 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-[#1B494E] text-slate-700 hover:text-white font-bold text-xs flex items-center gap-2 transition-all duration-150 ease-out active:scale-[0.98] motion-reduce:transform-none cursor-pointer shadow-2xs"
-          >
-            <Palette size={14} />
-            <span>Change Template</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Upload Property Image Section */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-            Upload Property Image
-          </label>
           <span className="text-xs font-semibold text-slate-500">
             {images.length > 0
-              ? `${images.length} ${images.length === 1 ? "image" : "images"} uploaded`
-              : "JPG, PNG, or WEBP"}
+              ? `${images.length} / 3 uploaded`
+              : "JPG, PNG, or WEBP (Max 3)"}
           </span>
         </div>
 
@@ -868,10 +658,10 @@ export function NewPropertyView({
               <UploadCloud size={24} />
             </div>
             <p className="text-sm font-semibold text-slate-700 group-hover:text-[#1B494E]">
-              Drag & drop property image here, or click to browse
+              Drag & drop property images here, or click to browse
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Supports JPG, PNG, or WEBP (high-resolution recommended)
+              Supports JPG, PNG, or WEBP (Maximum 3 images)
             </p>
           </div>
         ) : (
@@ -885,21 +675,23 @@ export function NewPropertyView({
                 </div>
                 <div>
                   <span className="font-bold text-sm tracking-wide block">
-                    {images.length === 1 ? "1 image uploaded" : `${images.length} images uploaded`}
+                    {images.length === 1 ? "1 / 3 image uploaded" : `${images.length} / 3 images uploaded`}
                   </span>
                   <span className="text-xs text-teal-100/80 font-medium block">
-                    Ready to generate flyer
+                    {images.length >= 3 ? "Maximum 3 images reached · Ready to generate flyers" : "Ready to generate flyer"}
                   </span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs font-bold px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg border border-white/20 transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <Plus size={13} />
-                <span>Add More</span>
-              </button>
+              {images.length < 3 && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-bold px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg border border-white/20 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus size={13} />
+                  <span>Add More</span>
+                </button>
+              )}
             </div>
 
             {/* Thumbnails Gallery */}
@@ -958,8 +750,10 @@ export function NewPropertyView({
                 );
               })}
 
-              {/* Missing Slot Indicators */}
-              {Array.from({ length: Math.max(0, briefs.length - images.length) }).map((_, i) => {
+              {/* Missing Slot Indicators (up to 3 max) */}
+              {Array.from({
+                length: Math.min(3 - images.length, Math.max(0, briefs.length - images.length)),
+              }).map((_, i) => {
                 const slotNum = images.length + i + 1;
                 return (
                   <div
@@ -974,8 +768,8 @@ export function NewPropertyView({
                 );
               })}
 
-              {/* Add Photo Button Tile */}
-              {images.length < briefs.length && (
+              {/* Add Photo Button Tile (shown if less than 3 images and briefs need more) */}
+              {images.length < 3 && images.length < briefs.length && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -983,7 +777,7 @@ export function NewPropertyView({
                 >
                   <Plus size={22} className="mb-1 text-slate-400 group-hover:text-[#1B494E] group-hover:scale-110 transition-transform duration-150" />
                   <span className="text-xs font-bold text-slate-700">Add Photo</span>
-                  <span className="text-[10px] text-slate-400 font-medium mt-0.5">JPG, PNG, WEBP</span>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5">{3 - images.length} remaining</span>
                 </button>
               )}
             </div>
@@ -1010,6 +804,64 @@ export function NewPropertyView({
             }
           }}
         />
+      </div>
+
+      {/* Stage 1 Flyer Template Selection */}
+      <div className="mb-7">
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+            Flyer Design Template
+          </label>
+          <span className="text-xs font-semibold text-slate-500">
+            {customTemplates.length > 0
+              ? `${3 + customTemplates.length} templates available`
+              : "3 official templates available"}
+          </span>
+        </div>
+
+        <div
+          onClick={() => setTemplateModalOpen(true)}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-[#1B494E]/60 shadow-xs hover:shadow-sm cursor-pointer transition-all duration-150 group"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-black/10 shadow-2xs group-hover:scale-105 transition-transform duration-150 motion-reduce:transform-none"
+              style={{ backgroundColor: currentTemplate.themeColor }}
+            >
+              <Layout size={20} className="text-white" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm sm:text-base font-extrabold text-[#1B494E] group-hover:text-[#F26522] transition-colors">
+                  {currentTemplate.name}
+                </h4>
+                {currentTemplate.badge ? (
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 shrink-0">
+                    {currentTemplate.badge}
+                  </span>
+                ) : null}
+              </div>
+              {currentTemplate.description ? (
+                <p className="text-xs text-slate-500 truncate mt-0.5">
+                  {currentTemplate.description}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setTemplateModalOpen(true);
+            }}
+            className="self-start sm:self-auto shrink-0 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-[#1B494E] text-slate-700 hover:text-white font-bold text-xs flex items-center gap-2 transition-all duration-150 ease-out active:scale-[0.98] motion-reduce:transform-none cursor-pointer shadow-2xs"
+          >
+            <Palette size={14} />
+            <span>Change Template</span>
+          </button>
+        </div>
       </div>
 
       {/* Error Notices */}
