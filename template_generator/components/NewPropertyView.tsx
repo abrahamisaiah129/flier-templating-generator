@@ -331,10 +331,8 @@ export function NewPropertyView({
                 rows={idx === 0 ? 5 : 4}
                 placeholder={
                   idx === 0
-                    ? briefs.length > 1
-                      ? "Paste brief #1 (paired with Image #1)..."
-                      : "Paste a whatsapp message, notes or brief in its unedited form. We will extract the necessary details for your design template. Something like 2 bedroom apartment in VGC, Lekki..."
-                    : `Paste brief #${idx + 1} (paired with Image #${idx + 1})...`
+                    ? "Paste raw text, WhatsApp messages, or notes here. We'll automatically structure the details for your flyer."
+                    : `Paste raw text, WhatsApp messages, or notes for brief #${idx + 1} here...`
                 }
                 className="w-full p-4 rounded-xl bg-[#E6EEEE]/60 border border-slate-300/70 text-slate-800 text-sm placeholder:text-slate-500/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/30 focus:border-[#1B494E] transition-all resize-y"
               />
@@ -342,7 +340,7 @@ export function NewPropertyView({
           ))}
         </div>
 
-        {/* Orange "+ Add another brief" Button (Figma screens 2 & 3) */}
+        {/* Action Button: "+ Add Property Brief" */}
         {briefs.length < 3 && (
           <button
             type="button"
@@ -350,7 +348,7 @@ export function NewPropertyView({
             className="w-full mt-3.5 py-3 rounded-lg bg-[#F26522] hover:bg-[#D95315] text-white font-bold text-sm flex items-center justify-center gap-2 transition-transform duration-150 ease-out active:scale-[0.98] shadow-sm shadow-orange-600/10 cursor-pointer"
           >
             <Plus size={16} />
-            <span>+ Add another brief</span>
+            <span>Add Property Brief</span>
           </button>
         )}
       </div>
@@ -358,16 +356,11 @@ export function NewPropertyView({
       {/* Upload Property Image Section (Swapped to come before Flyer Design Template) */}
       <div className="mb-7">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-              Upload Property Image
-            </label>
-            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
-              {briefs.length === 1 ? "1 image (1 brief added)" : `Max ${briefs.length} images (1 per brief)`}
-            </span>
-          </div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+            Upload Property Image
+          </label>
           <span className="text-xs font-semibold text-slate-500">
-            {images.length} / {briefs.length} brief {briefs.length === 1 ? "image" : "images"} uploaded
+            {briefs.length === 1 ? "1 property brief added" : `${briefs.length} property briefs added`} · {images.length}/{briefs.length} image uploaded
           </span>
         </div>
 
@@ -385,15 +378,11 @@ export function NewPropertyView({
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#E6EEEE]/80 flex items-center justify-center text-slate-600 group-hover:text-[#1B494E] group-hover:scale-105 transition-all">
               <UploadCloud size={24} />
             </div>
-            <p className="text-sm font-semibold text-slate-700 group-hover:text-[#1B494E]">
-              {briefs.length === 1
-                ? "Drag & drop Image #1 for Brief #1, or click to browse"
-                : `Drag & drop up to ${briefs.length} images (1 per brief), or click to browse`}
+            <p className="text-sm font-bold text-slate-800 group-hover:text-[#1B494E]">
+              Upload Cover Photo
             </p>
-            <p className="text-xs text-slate-400 mt-1">
-              {briefs.length === 1
-                ? "1 brief active · Exactly 1 image allowed (JPG, PNG, or WEBP)"
-                : `${briefs.length} briefs active · Exactly ${briefs.length} images allowed (1 for each brief)`}
+            <p className="text-xs text-slate-500 mt-1">
+              Drag and drop your image here, or browse files (JPG, PNG, WebP)
             </p>
           </div>
         ) : (
@@ -407,12 +396,12 @@ export function NewPropertyView({
                 </div>
                 <div>
                   <span className="font-bold text-sm tracking-wide block">
-                    {images.length} / {briefs.length} brief {briefs.length === 1 ? "image" : "images"} uploaded
+                    {briefs.length === 1 ? "1 property brief added" : `${briefs.length} property briefs added`} · {images.length}/{briefs.length} image uploaded
                   </span>
                   <span className="text-xs text-teal-100/80 font-medium block">
                     {images.length >= briefs.length
-                      ? `All ${briefs.length} brief ${briefs.length === 1 ? "photo" : "photos"} attached (1 per brief)`
-                      : `Upload ${briefs.length - images.length} more photo for Brief #${images.length + 1}`}
+                      ? "All images uploaded · Ready to generate flyer"
+                      : `Upload ${briefs.length - images.length} more image for Brief #${images.length + 1}`}
                   </span>
                 </div>
               </div>
@@ -513,7 +502,7 @@ export function NewPropertyView({
                   title="Add another brief to attach another image"
                 >
                   <Plus size={22} className="mb-1 text-[#F26522] group-hover:scale-110 transition-transform duration-150" />
-                  <span className="text-xs font-bold text-slate-700">+ Add Brief #{briefs.length + 1}</span>
+                  <span className="text-xs font-bold text-slate-700">Add Property Brief</span>
                   <span className="text-[10px] text-slate-500 font-medium mt-0.5">To upload Photo #{briefs.length + 1}</span>
                 </button>
               ) : null}
