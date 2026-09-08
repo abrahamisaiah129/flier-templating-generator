@@ -1,6 +1,6 @@
 "use client";
 
-import React, { RefObject } from "react";
+import React, { RefObject, useMemo } from "react";
 import { PropertyData, AppSettings, TemplateId, CustomTemplateItem } from "../types/propkit";
 import { FIXED_CONTACT, EMPTY_FIELD } from "../utils/constants";
 import {
@@ -102,6 +102,286 @@ function injectPropertyDataIntoSvg(
   return res;
 }
 
+export interface FlierItemBox {
+  id: string;
+  type: "text" | "image";
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rx?: number;
+}
+
+export const getBmiItemBoxes = (hasSec1: boolean, hasSec2: boolean): Record<string, FlierItemBox> => ({
+  "image-primary": {
+    id: "image-primary",
+    type: "image",
+    label: "Hero Background (Photo #1)",
+    x: 8,
+    y: 8,
+    width: CANVAS_W - 16,
+    height: 1285,
+    rx: 6,
+  },
+  "image-secondary-0": {
+    id: "image-secondary-0",
+    type: "image",
+    label: "Secondary Photo #1",
+    x: hasSec2 ? 640 : 780,
+    y: 55,
+    width: hasSec2 ? 175 : 230,
+    height: hasSec2 ? 130 : 160,
+    rx: 18,
+  },
+  "image-secondary-1": {
+    id: "image-secondary-1",
+    type: "image",
+    label: "Secondary Photo #2",
+    x: 830,
+    y: 55,
+    width: 175,
+    height: 130,
+    rx: 18,
+  },
+  logo: {
+    id: "logo",
+    type: "image",
+    label: "Agency Logo",
+    x: 84,
+    y: 15,
+    width: 360,
+    height: 140,
+    rx: 33,
+  },
+  furnished: {
+    id: "furnished",
+    type: "text",
+    label: "Furnished Status",
+    x: 150,
+    y: 772,
+    width: 261,
+    height: 46,
+    rx: 12,
+  },
+  bedrooms: {
+    id: "bedrooms",
+    type: "text",
+    label: "Bedrooms & Spec",
+    x: 166,
+    y: 818,
+    width: 255,
+    height: 280,
+    rx: 16,
+  },
+  location: {
+    id: "location",
+    type: "text",
+    label: "Location",
+    x: 436,
+    y: 824,
+    width: 412,
+    height: 82,
+    rx: 16,
+  },
+  priceNGN: {
+    id: "priceNGN",
+    type: "text",
+    label: "Price (NGN)",
+    x: 437,
+    y: 907,
+    width: 438,
+    height: 136,
+    rx: 18,
+  },
+  priceUsd: {
+    id: "priceUsd",
+    type: "text",
+    label: "Price (USD)",
+    x: 437,
+    y: 1043,
+    width: 300,
+    height: 57,
+    rx: 14,
+  },
+  documentation: {
+    id: "documentation",
+    type: "text",
+    label: "Documentation",
+    x: 137,
+    y: 1125,
+    width: 441,
+    height: 70,
+    rx: 10,
+  },
+  contact: {
+    id: "contact",
+    type: "text",
+    label: "Agency Contact",
+    x: 0,
+    y: 1293,
+    width: 1080,
+    height: 57,
+    rx: 0,
+  },
+});
+
+export const getEkoItemBoxes = (hasSec: boolean): Record<string, FlierItemBox> => ({
+  "image-primary": {
+    id: "image-primary",
+    type: "image",
+    label: "Hero Background Photo",
+    x: 8,
+    y: 8,
+    width: CANVAS_W - 16,
+    height: CANVAS_H - 16,
+    rx: 6,
+  },
+  "image-secondary-0": {
+    id: "image-secondary-0",
+    type: "image",
+    label: "Secondary Photo #1",
+    x: 60,
+    y: 110,
+    width: 480,
+    height: 320,
+    rx: 16,
+  },
+  logo: {
+    id: "logo",
+    type: "image",
+    label: "Agency Logo",
+    x: 60,
+    y: 40,
+    width: 220,
+    height: 55,
+    rx: 8,
+  },
+  propertyTitle: {
+    id: "propertyTitle",
+    type: "text",
+    label: "Property Specs",
+    x: 530,
+    y: 1010,
+    width: 480,
+    height: 140,
+    rx: 14,
+  },
+  location: {
+    id: "location",
+    type: "text",
+    label: "Location",
+    x: 110,
+    y: 1010,
+    width: 380,
+    height: 45,
+    rx: 10,
+  },
+  priceNGN: {
+    id: "priceNGN",
+    type: "text",
+    label: "Price (NGN)",
+    x: 110,
+    y: 1060,
+    width: 380,
+    height: 90,
+    rx: 12,
+  },
+  documentation: {
+    id: "documentation",
+    type: "text",
+    label: "Documentation",
+    x: 120,
+    y: 1150,
+    width: 380,
+    height: 40,
+    rx: 8,
+  },
+  contact: {
+    id: "contact",
+    type: "text",
+    label: "Agency Contact",
+    x: 40,
+    y: 1210,
+    width: 1000,
+    height: 90,
+    rx: 10,
+  },
+});
+
+export const getEnoseItemBoxes = (hasSec: boolean): Record<string, FlierItemBox> => ({
+  "image-primary": {
+    id: "image-primary",
+    type: "image",
+    label: "Hero Background Photo",
+    x: 8,
+    y: 8,
+    width: CANVAS_W - 16,
+    height: 720,
+    rx: 6,
+  },
+  "image-secondary-0": {
+    id: "image-secondary-0",
+    type: "image",
+    label: "Secondary Photo #1",
+    x: 60,
+    y: 740,
+    width: 340,
+    height: 260,
+    rx: 20,
+  },
+  logo: {
+    id: "logo",
+    type: "image",
+    label: "Agency Logo",
+    x: 60,
+    y: 40,
+    width: 220,
+    height: 60,
+    rx: 8,
+  },
+  priceNGN: {
+    id: "priceNGN",
+    type: "text",
+    label: "Price (NGN)",
+    x: 96,
+    y: 1000,
+    width: 398,
+    height: 190,
+    rx: 22,
+  },
+  propertyTitle: {
+    id: "propertyTitle",
+    type: "text",
+    label: "Property Specs",
+    x: 520,
+    y: 1020,
+    width: 500,
+    height: 50,
+    rx: 10,
+  },
+  location: {
+    id: "location",
+    type: "text",
+    label: "Location",
+    x: 520,
+    y: 1070,
+    width: 500,
+    height: 120,
+    rx: 14,
+  },
+  contact: {
+    id: "contact",
+    type: "text",
+    label: "Agency Contact",
+    x: 40,
+    y: 1210,
+    width: 1000,
+    height: 90,
+    rx: 10,
+  },
+});
+
 interface FlyerCanvasProps {
   data: PropertyData;
   settings: AppSettings;
@@ -112,6 +392,8 @@ interface FlyerCanvasProps {
   customTemplate?: CustomTemplateItem;
   className?: string;
   fallbackColor?: string;
+  selectedItemId?: string | null;
+  onSelectItem?: (itemId: string | null, itemType: "text" | "image") => void;
 }
 
 export function FlyerCanvas({
@@ -124,6 +406,8 @@ export function FlyerCanvas({
   customTemplate,
   className = "",
   fallbackColor,
+  selectedItemId,
+  onSelectItem,
 }: FlyerCanvasProps) {
   // Ingest image from URL parameters if primaryImage is not provided
   const resolvedPrimaryImage = (() => {
@@ -234,6 +518,38 @@ export function FlyerCanvas({
     (enoseLocation.line1.length > 18 || enoseLocation.line2.length > 18) ? 46 : 56;
   const enosePriceFontSize = rawPriceNaira.length > 8 ? 60 : 74;
 
+  const hasSec1 = resolvedSecondaryImages.length > 0;
+  const hasSec2 = resolvedSecondaryImages.length > 1;
+
+  const activeBox = useMemo(() => {
+    if (!selectedItemId) return null;
+    let boxes: Record<string, FlierItemBox> = {};
+    if (templateId === "bmi") {
+      boxes = getBmiItemBoxes(hasSec1, hasSec2);
+    } else if (templateId === "eko") {
+      boxes = getEkoItemBoxes(hasSec1);
+    } else if (templateId === "enose") {
+      boxes = getEnoseItemBoxes(hasSec1);
+    } else {
+      boxes = getBmiItemBoxes(hasSec1, hasSec2);
+    }
+    return boxes[selectedItemId] || null;
+  }, [selectedItemId, templateId, hasSec1, hasSec2]);
+
+  const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    const target = (e.target as Element).closest("[data-flier-item]");
+    if (target) {
+      const itemId = target.getAttribute("data-flier-item");
+      const itemType = (target.getAttribute("data-flier-type") || "text") as "text" | "image";
+      if (itemId) {
+        onSelectItem?.(itemId, itemType);
+        return;
+      }
+    }
+    // Deselect if clicked outside an indexed item
+    onSelectItem?.(null, "text");
+  };
+
   return (
     <div
       className={`relative overflow-hidden rounded-2xl shadow-xl border border-slate-200/80 bg-white ${className}`}
@@ -244,7 +560,8 @@ export function FlyerCanvas({
         width="100%"
         xmlns="http://www.w3.org/2000/svg"
         xmlnsXlink="http://www.w3.org/1999/xlink"
-        className="block w-full h-auto select-none"
+        className="block w-full h-auto select-none cursor-default"
+        onClick={handleCanvasClick}
         style={{
           background:
             isCustom
@@ -341,21 +658,27 @@ export function FlyerCanvas({
         {templateId === "bmi" && (
           <g>
             {/* 1. Background Photo Layer with Fallback & CORS handling */}
-            <rect x="0" y="0" width={CANVAS_W} height="1293" fill={fallbackColor || "#1E293B"} />
-            {resolvedPrimaryImage && (
-              <image
-                href={resolvedPrimaryImage}
-                xlinkHref={resolvedPrimaryImage}
-                crossOrigin="anonymous"
-                x="0"
-                y="0"
-                width={CANVAS_W}
-                height="1293"
-                preserveAspectRatio="xMidYMid slice"
-              />
-            )}
-            <rect x="0" y="0" width={CANVAS_W} height="280" fill="url(#bmiTopVignette)" />
-            <rect x="0" y="700" width={CANVAS_W} height="593" fill="url(#bmiBottomVignette)" />
+            <g
+              data-flier-item="image-primary"
+              data-flier-type="image"
+              className="cursor-pointer"
+            >
+              <rect x="0" y="0" width={CANVAS_W} height="1293" fill={fallbackColor || "#1E293B"} />
+              {resolvedPrimaryImage && (
+                <image
+                  href={resolvedPrimaryImage}
+                  xlinkHref={resolvedPrimaryImage}
+                  crossOrigin="anonymous"
+                  x="0"
+                  y="0"
+                  width={CANVAS_W}
+                  height="1293"
+                  preserveAspectRatio="xMidYMid slice"
+                />
+              )}
+              <rect x="0" y="0" width={CANVAS_W} height="280" fill="url(#bmiTopVignette)" />
+              <rect x="0" y="700" width={CANVAS_W} height="593" fill="url(#bmiBottomVignette)" />
+            </g>
 
             {/* Secondary Photo Containers (Nested rounded thumbnail shapes with clipping masks) */}
             {resolvedSecondaryImages.length > 0 && (
@@ -367,7 +690,12 @@ export function FlyerCanvas({
                   const h = resolvedSecondaryImages.length === 1 ? 160 : 130;
                   const clipId = `bmiSecClip_${sIdx}`;
                   return (
-                    <g key={sIdx}>
+                    <g
+                      key={sIdx}
+                      data-flier-item={`image-secondary-${sIdx}`}
+                      data-flier-type="image"
+                      className="cursor-pointer"
+                    >
                       <defs>
                         <clipPath id={clipId}>
                           <rect x={xPos} y={yPos} width={w} height={h} rx="18" ry="18" />
@@ -414,7 +742,12 @@ export function FlyerCanvas({
             />
 
             {/* 2. Top-Left Logo Badge - Exact Figma curvature & position */}
-            <g filter="url(#bmiLogoShadow)">
+            <g
+              filter="url(#bmiLogoShadow)"
+              data-flier-item="logo"
+              data-flier-type="image"
+              className="cursor-pointer"
+            >
               <rect
                 x="84"
                 y="-43.6915"
@@ -436,7 +769,12 @@ export function FlyerCanvas({
             {/* 3. Floating Composite Spec Card */}
             <g filter="url(#floatingShadow)">
               {/* Furnished Status Tab - Exact Figma Vector Coordinates */}
-              <g filter="url(#badgeShadow)">
+              <g
+                filter="url(#badgeShadow)"
+                data-flier-item="furnished"
+                data-flier-type="text"
+                className="cursor-pointer"
+              >
                 <path
                   fillRule="evenodd"
                   clipRule="evenodd"
@@ -467,7 +805,11 @@ export function FlyerCanvas({
               />
 
               {/* Giant Orange Bedroom Num + Stacked Details */}
-              <g>
+              <g
+                data-flier-item="bedrooms"
+                data-flier-type="text"
+                className="cursor-pointer"
+              >
                 <text
                   x="180"
                   y="1008"
@@ -532,7 +874,12 @@ export function FlyerCanvas({
               </g>
 
               {/* Documentation Strip - Exact Figma Vector Coordinates */}
-              <g filter="url(#cardShadow)">
+              <g
+                filter="url(#cardShadow)"
+                data-flier-item="documentation"
+                data-flier-type="text"
+                className="cursor-pointer"
+              >
                 <path
                   opacity="0.85"
                   fillRule="evenodd"
@@ -555,7 +902,12 @@ export function FlyerCanvas({
               </g>
 
               {/* Location Pill - Exact Figma Vector Coordinates */}
-              <g filter="url(#cardShadow)">
+              <g
+                filter="url(#cardShadow)"
+                data-flier-item="location"
+                data-flier-type="text"
+                className="cursor-pointer"
+              >
                 <path
                   opacity="0.82"
                   fillRule="evenodd"
@@ -584,7 +936,12 @@ export function FlyerCanvas({
               </g>
 
               {/* White Price Box - Exact Figma Vector Coordinates */}
-              <g filter="url(#cardShadow)">
+              <g
+                filter="url(#cardShadow)"
+                data-flier-item="priceNGN"
+                data-flier-type="text"
+                className="cursor-pointer"
+              >
                 <path
                   opacity="0.96"
                   fillRule="evenodd"
@@ -616,7 +973,12 @@ export function FlyerCanvas({
               </g>
 
               {/* Orange Initial Deposit / Payment Plan Strip - Exact Figma Path */}
-              <g filter="url(#cardShadow)">
+              <g
+                filter="url(#cardShadow)"
+                data-flier-item="priceUsd"
+                data-flier-type="text"
+                className="cursor-pointer"
+              >
                 <path
                   opacity="0.95"
                   fillRule="evenodd"
@@ -640,7 +1002,12 @@ export function FlyerCanvas({
             </g>
 
             {/* 4. Canvas Bottom Contact Footer (1080 × 57) */}
-            <g transform="translate(0, 1293)">
+            <g
+              transform="translate(0, 1293)"
+              data-flier-item="contact"
+              data-flier-type="text"
+              className="cursor-pointer"
+            >
               <rect x="0" y="0" width={CANVAS_W} height="57" fill="#FFFFFF" />
               <line
                 x1="0"
@@ -745,19 +1112,25 @@ export function FlyerCanvas({
         {templateId === "eko" && (
           <g>
             {/* Full-bleed Photo Layer with Fallback & CORS handling */}
-            <rect x="0" y="0" width={CANVAS_W} height={CANVAS_H} fill={fallbackColor || "#0F172A"} />
-            {resolvedPrimaryImage && (
-              <image
-                href={resolvedPrimaryImage}
-                xlinkHref={resolvedPrimaryImage}
-                crossOrigin="anonymous"
-                x="0"
-                y="0"
-                width={CANVAS_W}
-                height={CANVAS_H}
-                preserveAspectRatio="xMidYMid slice"
-              />
-            )}
+            <g
+              data-flier-item="image-primary"
+              data-flier-type="image"
+              className="cursor-pointer"
+            >
+              <rect x="0" y="0" width={CANVAS_W} height={CANVAS_H} fill={fallbackColor || "#0F172A"} />
+              {resolvedPrimaryImage && (
+                <image
+                  href={resolvedPrimaryImage}
+                  xlinkHref={resolvedPrimaryImage}
+                  crossOrigin="anonymous"
+                  x="0"
+                  y="0"
+                  width={CANVAS_W}
+                  height={CANVAS_H}
+                  preserveAspectRatio="xMidYMid slice"
+                />
+              )}
+            </g>
 
             {/* Deep Cinematic Vignette */}
             <rect x="0" y="620" width={CANVAS_W} height="730" fill="url(#ekoBottomGrad)" />
@@ -772,7 +1145,12 @@ export function FlyerCanvas({
                   const h = resolvedSecondaryImages.length === 1 ? 160 : 130;
                   const clipId = `ekoSecClip_${sIdx}`;
                   return (
-                    <g key={sIdx}>
+                    <g
+                      key={sIdx}
+                      data-flier-item={`image-secondary-${sIdx}`}
+                      data-flier-type="image"
+                      className="cursor-pointer"
+                    >
                       <defs>
                         <clipPath id={clipId}>
                           <rect x={xPos} y={yPos} width={w} height={h} rx="16" ry="16" />
@@ -816,7 +1194,9 @@ export function FlyerCanvas({
               fontWeight="700"
               fill="#FFFFFF"
               letterSpacing="2"
-              className="font-montserrat"
+              className="font-montserrat cursor-pointer"
+              data-flier-item="location"
+              data-flier-type="text"
             >
               {(data.location || "LEKKI PHASE 1").toUpperCase()}
             </text>
@@ -827,7 +1207,9 @@ export function FlyerCanvas({
               fontWeight="800"
               fill="#FFFFFF"
               letterSpacing="-0.5"
-              className="font-cinzel"
+              className="font-cinzel cursor-pointer"
+              data-flier-item="priceNGN"
+              data-flier-type="text"
             >
               {rawPriceNaira}
             </text>
@@ -844,39 +1226,45 @@ export function FlyerCanvas({
             />
 
             {/* Right Side: Stacked Uppercase Specs */}
-            <text
-              x="535"
-              y="1048"
-              fontSize="26"
-              fontWeight="700"
-              fill="#FFFFFF"
-              letterSpacing="1.5"
-              className="font-montserrat"
+            <g
+              data-flier-item="propertyTitle"
+              data-flier-type="text"
+              className="cursor-pointer"
             >
-              {ekoSpecLines[0]}
-            </text>
-            <text
-              x="535"
-              y="1088"
-              fontSize="26"
-              fontWeight="700"
-              fill="#FFFFFF"
-              letterSpacing="1.5"
-              className="font-montserrat"
-            >
-              {ekoSpecLines[1]}
-            </text>
-            <text
-              x="535"
-              y="1128"
-              fontSize="26"
-              fontWeight="700"
-              fill="#FFFFFF"
-              letterSpacing="1.5"
-              className="font-montserrat"
-            >
-              {ekoSpecLines[2]}
-            </text>
+              <text
+                x="535"
+                y="1048"
+                fontSize="26"
+                fontWeight="700"
+                fill="#FFFFFF"
+                letterSpacing="1.5"
+                className="font-montserrat"
+              >
+                {ekoSpecLines[0]}
+              </text>
+              <text
+                x="535"
+                y="1088"
+                fontSize="26"
+                fontWeight="700"
+                fill="#FFFFFF"
+                letterSpacing="1.5"
+                className="font-montserrat"
+              >
+                {ekoSpecLines[1]}
+              </text>
+              <text
+                x="535"
+                y="1128"
+                fontSize="26"
+                fontWeight="700"
+                fill="#FFFFFF"
+                letterSpacing="1.5"
+                className="font-montserrat"
+              >
+                {ekoSpecLines[2]}
+              </text>
+            </g>
 
             {/* Full-width Horizontal Divider Line */}
             <line
@@ -899,7 +1287,9 @@ export function FlyerCanvas({
               fill="#FFFFFF"
               fillOpacity="0.9"
               letterSpacing="1.5"
-              className="font-montserrat"
+              className="font-montserrat cursor-pointer"
+              data-flier-item="contact"
+              data-flier-type="text"
             >
               {FIXED_CONTACT.phone} · {FIXED_CONTACT.instagram}
             </text>
@@ -912,6 +1302,9 @@ export function FlyerCanvas({
               width="244"
               height="65"
               preserveAspectRatio="xMidYMid meet"
+              data-flier-item="logo"
+              data-flier-type="image"
+              className="cursor-pointer"
             />
           </g>
         )}
@@ -932,10 +1325,18 @@ export function FlyerCanvas({
               width="285"
               height="65"
               preserveAspectRatio="xMidYMid meet"
+              data-flier-item="logo"
+              data-flier-type="image"
+              className="cursor-pointer"
             />
 
             {/* Main Arch-top Photo Frame with Fallback & CORS handling */}
-            <g clipPath="url(#enoseArchClip)">
+            <g
+              clipPath="url(#enoseArchClip)"
+              data-flier-item="image-primary"
+              data-flier-type="image"
+              className="cursor-pointer"
+            >
               <rect x="48" y="165" width="984" height="1135" fill={fallbackColor || "#2A1808"} />
               {resolvedPrimaryImage && (
                 <image
@@ -963,7 +1364,12 @@ export function FlyerCanvas({
                   const h = resolvedSecondaryImages.length === 1 ? 165 : 135;
                   const clipId = `enoseSecClip_${sIdx}`;
                   return (
-                    <g key={sIdx}>
+                    <g
+                      key={sIdx}
+                      data-flier-item={`image-secondary-${sIdx}`}
+                      data-flier-type="image"
+                      className="cursor-pointer"
+                    >
                       <defs>
                         <clipPath id={clipId}>
                           <rect x={xPos} y={yPos} width={w} height={h} rx="20" ry="20" />
@@ -999,7 +1405,11 @@ export function FlyerCanvas({
             )}
 
             {/* Bottom Left Price Badge */}
-            <g>
+            <g
+              data-flier-item="priceNGN"
+              data-flier-type="text"
+              className="cursor-pointer"
+            >
               {/* Chocolate Brown Card with Dashed White Border */}
               <rect
                 x="96"
@@ -1056,44 +1466,56 @@ export function FlyerCanvas({
             {/* Bottom Right: Property Subtitle & Bold Location Headline */}
             <g>
               {/* Subtitle */}
-              <text
-                x="525"
-                y="1055"
-                fontSize="32"
-                fontWeight="700"
-                fill="#FFF5ED"
-                letterSpacing="1"
-                className="font-cinzel"
+              <g
+                data-flier-item="propertyTitle"
+                data-flier-type="text"
+                className="cursor-pointer"
               >
-                {data.bedrooms ? `${data.bedrooms} Bedroom` : "Luxury"}{" "}
-                {data.propertyType || "Apartment"}
-              </text>
-
-              {/* Huge Bold Location Headline */}
-              <text
-                x="525"
-                y="1115"
-                fontSize={enoseLocFontSize}
-                fontWeight="800"
-                fill="#FFF5ED"
-                letterSpacing="1"
-                className="font-montserrat"
-              >
-                {enoseLocation.line1}
-              </text>
-              {enoseLocation.line2 && (
                 <text
                   x="525"
-                  y="1175"
+                  y="1055"
+                  fontSize="32"
+                  fontWeight="700"
+                  fill="#FFF5ED"
+                  letterSpacing="1"
+                  className="font-cinzel"
+                >
+                  {data.bedrooms ? `${data.bedrooms} Bedroom` : "Luxury"}{" "}
+                  {data.propertyType || "Apartment"}
+                </text>
+              </g>
+
+              {/* Huge Bold Location Headline */}
+              <g
+                data-flier-item="location"
+                data-flier-type="text"
+                className="cursor-pointer"
+              >
+                <text
+                  x="525"
+                  y="1115"
                   fontSize={enoseLocFontSize}
                   fontWeight="800"
                   fill="#FFF5ED"
                   letterSpacing="1"
                   className="font-montserrat"
                 >
-                  {enoseLocation.line2}
+                  {enoseLocation.line1}
                 </text>
-              )}
+                {enoseLocation.line2 && (
+                  <text
+                    x="525"
+                    y="1175"
+                    fontSize={enoseLocFontSize}
+                    fontWeight="800"
+                    fill="#FFF5ED"
+                    letterSpacing="1"
+                    className="font-montserrat"
+                  >
+                    {enoseLocation.line2}
+                  </text>
+                )}
+              </g>
             </g>
           </g>
         )}
@@ -1103,6 +1525,70 @@ export function FlyerCanvas({
         {/* ========================================================= */}
         {isCustom && processedCustomSvgInner && (
           <g dangerouslySetInnerHTML={{ __html: processedCustomSvgInner }} />
+        )}
+
+        {/* ========================================================= */}
+        {/* ON-CANVAS SELECTION OVERLAY & CONTROL HANDLES              */}
+        {/* ========================================================= */}
+        {activeBox && (
+          <g className="flier-selection-overlay pointer-events-none">
+            {/* Outline Box */}
+            <rect
+              x={activeBox.x - 4}
+              y={activeBox.y - 4}
+              width={activeBox.width + 8}
+              height={activeBox.height + 8}
+              rx={Math.max(4, (activeBox.rx || 0) + 2)}
+              fill="none"
+              stroke="#F26522"
+              strokeWidth="4"
+              strokeDasharray="8 6"
+              filter="drop-shadow(0 2px 10px rgba(242,101,34,0.5))"
+            />
+            {/* 4 Corner Control Handles (Figma / Canva style) */}
+            {[
+              { cx: activeBox.x - 4, cy: activeBox.y - 4 },
+              { cx: activeBox.x + activeBox.width + 4, cy: activeBox.y - 4 },
+              { cx: activeBox.x - 4, cy: activeBox.y + activeBox.height + 4 },
+              { cx: activeBox.x + activeBox.width + 4, cy: activeBox.y + activeBox.height + 4 },
+            ].map((handle, hIdx) => (
+              <rect
+                key={hIdx}
+                x={handle.cx - 7}
+                y={handle.cy - 7}
+                width="14"
+                height="14"
+                fill="#FFFFFF"
+                stroke="#F26522"
+                strokeWidth="3"
+                rx="3"
+              />
+            ))}
+            {/* Floating Selection Label Pill */}
+            <g
+              transform={`translate(${Math.max(16, activeBox.x)}, ${Math.max(42, activeBox.y - 38)})`}
+            >
+              <rect
+                x="0"
+                y="0"
+                width={Math.max(130, activeBox.label.length * 10 + 44)}
+                height="32"
+                rx="16"
+                fill="#F26522"
+                filter="drop-shadow(0 4px 8px rgba(0,0,0,0.35))"
+              />
+              <text
+                x="14"
+                y="21"
+                fontSize="14"
+                fontWeight="800"
+                fill="#FFFFFF"
+                className="font-montserrat"
+              >
+                {activeBox.type === "image" ? "📷" : "✏️"} {activeBox.label}
+              </text>
+            </g>
+          </g>
         )}
       </svg>
     </div>
@@ -1119,6 +1605,9 @@ export async function svgToPngBlob(
 ): Promise<Blob | null> {
   try {
     const clonedSvg = svgEl.cloneNode(true) as SVGSVGElement;
+
+    // Ensure selection overlay or inspection handles are stripped from the exported image
+    clonedSvg.querySelectorAll(".flier-selection-overlay").forEach((el) => el.remove());
 
     // Convert any external <image> hrefs to Data URLs to guarantee clean canvas export
     const images = Array.from(clonedSvg.querySelectorAll("image"));

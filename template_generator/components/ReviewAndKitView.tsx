@@ -16,6 +16,7 @@ import {
   Eye,
   Images,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
 import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
@@ -122,6 +123,18 @@ export function ReviewAndKitView({
   const [caption, setCaption] = useState<string>(
     existingCaption || generateCaption(initialData, settings.captionTemplate, settings)
   );
+  const [localImages, setLocalImages] = useState<UploadedImage[]>(images);
+  const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(settings.logoUrl || null);
+  const [selectedCanvasItemId, setSelectedCanvasItemId] = useState<string | null>(null);
+  const [selectedCanvasItemType, setSelectedCanvasItemType] = useState<"text" | "image" | null>(null);
+  const [imageUploadTargetSlot, setImageUploadTargetSlot] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const effectiveSettings = React.useMemo(
+    () => ({ ...settings, logoUrl: customLogoUrl || settings.logoUrl }),
+    [settings, customLogoUrl]
+  );
+
   const [exportScale, setExportScale] = useState<number>(1);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -132,16 +145,205 @@ export function ReviewAndKitView({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const offscreenSvgs = useRef<(SVGSVGElement | null)[]>([]);
 
-  // Bound index safely within images range
+  // Bound index safely within localImages range
   const safeActiveIndex =
-    images.length > 0
-      ? Math.min(Math.max(0, activeImageIndex), images.length - 1)
+    localImages.length > 0
+      ? Math.min(Math.max(0, activeImageIndex), localImages.length - 1)
       : 0;
 
   const currentActiveImage =
-    images.length > 0
-      ? images[safeActiveIndex]?.url || null
-      : images.find((img) => img.id === primaryId)?.url || null;
+    localImages.length > 0
+      ? localImages[safeActiveIndex]?.url || null
+      : localImages.find((img) => img.id === primaryId)?.url || null;
+
+  const handleSelectCanvasItem = (itemId: string | null, itemType: "text" | "image") => {
+    setSelectedCanvasItemId(itemId);
+    setSelectedCanvasItemType(itemType);
+  };
+
+  const handleImageSlotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      if (imageUploadTargetSlot === "logo") {
+        setCustomLogoUrl(dataUrl);
+        return;
+      }
+
+      if (imageUploadTargetSlot === "image-primary") {
+        setLocalImages((prev) => {
+          if (prev.length === 0) {
+            return [{ id: uid(), url: dataUrl, name: file.name, size: file.size }];
+          }
+          const updated = [...prev];
+          updated[safeActiveIndex] = {
+            ...updated[safeActiveIndex],
+            url: dataUrl,
+            name: file.name,
+          };
+          return updated;
+        });
+        return;
+      }
+
+      if (
+        imageUploadTargetSlot === "image-secondary-0" ||
+        imageUploadTargetSlot === "image-secondary-1"
+      ) {
+        const secIdx = imageUploadTargetSlot === "image-secondary-0" ? 0 : 1;
+        setLocalImages((prev) => {
+          const activeIdx = Math.min(Math.max(0, activeImageIndex), Math.max(0, prev.length - 1));
+          const secondaryIndices: number[] = [];
+          prev.forEach((_, idx) => {
+            if (idx !== activeIdx) secondaryIndices.push(idx);
+          });
+
+          const targetRealIdx = secondaryIndices[secIdx];
+          if (targetRealIdx !== undefined) {
+            const updated = [...prev];
+            updated[targetRealIdx] = {
+              ...updated[targetRealIdx],
+              url: dataUrl,
+              name: file.name,
+            };
+            return updated;
+          } else {
+            return [...prev, { id: uid(), url: dataUrl, name: file.name, size: file.size }];
+          }
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const getItemLabel = (id: string): string => {
+    switch (id) {
+      case "image-primary":
+        return "Hero Background Photo";
+      case "image-secondary-0":
+        return "Secondary Photo #1";
+      case "image-secondary-1":
+        return "Secondary Photo #2";
+      case "logo":
+        return "Agency Logo";
+      case "furnished":
+        return "Furnished Status";
+      case "bedrooms":
+        return "Bedrooms & Spec";
+      case "location":
+        return "Property Location";
+      case "priceNGN":
+        return "Price (Naira - ₦)";
+      case "priceUsd":
+        return "Price (USD) / Deposit Plan";
+      case "documentation":
+        return "Documentation / Title";
+      case "propertyTitle":
+        return "Property Specs & Type";
+      case "contact":
+        return "Agency Contact Ribbon";
+      default:
+        return id;
+    }
+  };
+
+  const renderInlineQuickEditor = (id: string) => {
+    switch (id) {
+      case "priceNGN":
+        return (
+          <input
+            type="number"
+            value={data.priceNGN ?? ""}
+            onChange={(e) =>
+              updateField(
+                "priceNGN",
+                e.target.value ? parseInt(e.target.value, 10) : null
+              )
+            }
+            placeholder="Price NGN..."
+            className="w-32 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
+          />
+        );
+      case "location":
+        return (
+          <input
+            type="text"
+            value={data.location || ""}
+            onChange={(e) => updateField("location", e.target.value)}
+            placeholder="Location..."
+            className="w-40 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
+          />
+        );
+      case "documentation":
+        return (
+          <input
+            type="text"
+            value={data.documentation || ""}
+            onChange={(e) => updateField("documentation", e.target.value)}
+            placeholder="Title / Docs..."
+            className="w-36 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
+          />
+        );
+      case "bedrooms":
+        return (
+          <input
+            type="number"
+            value={data.bedrooms ?? ""}
+            onChange={(e) =>
+              updateField(
+                "bedrooms",
+                e.target.value ? parseInt(e.target.value, 10) : null
+              )
+            }
+            placeholder="Beds..."
+            className="w-20 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
+          />
+        );
+      case "propertyTitle":
+        return (
+          <input
+            type="text"
+            value={data.propertyType || ""}
+            onChange={(e) => updateField("propertyType", e.target.value)}
+            placeholder="Property type..."
+            className="w-36 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
+          />
+        );
+      case "furnished":
+        return (
+          <div className="flex gap-1 bg-white/10 p-0.5 rounded-lg text-xs">
+            <button
+              type="button"
+              onClick={() => updateField("furnished", true)}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                data.furnished === true
+                  ? "bg-[#F26522] text-white"
+                  : "text-slate-200"
+              }`}
+            >
+              Furnished
+            </button>
+            <button
+              type="button"
+              onClick={() => updateField("furnished", false)}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                data.furnished === false
+                  ? "bg-[#F26522] text-white"
+                  : "text-slate-200"
+              }`}
+            >
+              Unfurnished
+            </button>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   const updateField = <K extends keyof PropertyData>(key: K, value: PropertyData[K]) => {
     setData((prev) => {
@@ -170,8 +372,8 @@ export function ReviewAndKitView({
     const item: PropertyItem = {
       id: existingId || uid(),
       data,
-      images,
-      primaryId: primaryId || images[0]?.id || null,
+      images: localImages,
+      primaryId: primaryId || localImages[0]?.id || null,
       caption: generatedCaption,
       status: "Ready",
       createdAt: new Date().toISOString(),
@@ -198,7 +400,7 @@ export function ReviewAndKitView({
       const a = document.createElement("a");
       a.href = url;
       const scaleSuffix = exportScale > 1 ? `@${exportScale}x-HD` : "";
-      const outputSuffix = images.length > 1 ? `-flyer-${targetIndex + 1}` : "";
+      const outputSuffix = localImages.length > 1 ? `-flyer-${targetIndex + 1}` : "";
       a.download = `${(data.propertyTitle || "property-flyer")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")}${outputSuffix}-${selectedTemplate}${scaleSuffix}.png`;
@@ -212,9 +414,9 @@ export function ReviewAndKitView({
   };
 
   const handleDownloadAllZip = async () => {
-    if (images.length === 0) return;
+    if (localImages.length === 0) return;
     setBatchDownloading(true);
-    setBatchProgress(`Initializing ${images.length} flyers...`);
+    setBatchProgress(`Initializing ${localImages.length} flyers...`);
     try {
       const JSZipModule = await import("jszip");
       const JSZip = JSZipModule.default;
@@ -223,8 +425,8 @@ export function ReviewAndKitView({
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-");
 
-      for (let i = 0; i < images.length; i++) {
-        setBatchProgress(`Rendering flyer ${i + 1} of ${images.length}...`);
+      for (let i = 0; i < localImages.length; i++) {
+        setBatchProgress(`Rendering flyer ${i + 1} of ${localImages.length}...`);
         const svgEl =
           i === safeActiveIndex && svgRef.current
             ? svgRef.current
@@ -248,7 +450,7 @@ export function ReviewAndKitView({
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${titleSlug}-${selectedTemplate}-all-${images.length}-flyers.zip`;
+      a.download = `${titleSlug}-${selectedTemplate}-all-${localImages.length}-flyers.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -260,15 +462,15 @@ export function ReviewAndKitView({
   };
 
   const handleDownloadAllSeparate = async () => {
-    if (images.length === 0) return;
+    if (localImages.length === 0) return;
     setBatchDownloading(true);
     try {
       const titleSlug = (data.propertyTitle || "property-flyer")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-");
 
-      for (let i = 0; i < images.length; i++) {
-        setBatchProgress(`Downloading flyer ${i + 1} of ${images.length}...`);
+      for (let i = 0; i < localImages.length; i++) {
+        setBatchProgress(`Downloading flyer ${i + 1} of ${localImages.length}...`);
         const svgEl =
           i === safeActiveIndex && svgRef.current
             ? svgRef.current
@@ -373,10 +575,16 @@ export function ReviewAndKitView({
                   Property Title
                 </label>
                 <input
+                  id="spec-field-propertyTitle"
                   type="text"
                   value={data.propertyTitle}
+                  onFocus={() => handleSelectCanvasItem("propertyTitle", "text")}
                   onChange={(e) => updateField("propertyTitle", e.target.value)}
-                  className="w-full py-2.5 px-3.5 rounded-lg border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20 focus:border-[#1B494E]"
+                  className={`w-full py-2.5 px-3.5 rounded-lg border text-sm font-semibold transition-all focus:outline-none ${
+                    selectedCanvasItemId === "propertyTitle"
+                      ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
+                      : "border-slate-200 focus:ring-2 focus:ring-[#1B494E]/20 focus:border-[#1B494E]"
+                  }`}
                 />
               </div>
 
@@ -388,11 +596,15 @@ export function ReviewAndKitView({
                     Property Type
                   </label>
                   <input
+                    id="spec-field-propertyType"
                     type="text"
                     value={data.propertyType}
+                    onFocus={() => handleSelectCanvasItem("propertyTitle", "text")}
                     onChange={(e) => updateField("propertyType", e.target.value)}
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm focus:outline-none ${
-                      isMissing(data.propertyType)
+                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
+                      selectedCanvasItemId === "propertyTitle"
+                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
+                        : isMissing(data.propertyType)
                         ? "border-amber-300 bg-amber-50/50"
                         : "border-slate-200"
                     }`}
@@ -405,11 +617,15 @@ export function ReviewAndKitView({
                     Location
                   </label>
                   <input
+                    id="spec-field-location"
                     type="text"
                     value={data.location}
+                    onFocus={() => handleSelectCanvasItem("location", "text")}
                     onChange={(e) => updateField("location", e.target.value)}
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm focus:outline-none ${
-                      isMissing(data.location)
+                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
+                      selectedCanvasItemId === "location"
+                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
+                        : isMissing(data.location)
                         ? "border-amber-300 bg-amber-50/50"
                         : "border-slate-200"
                     }`}
@@ -422,16 +638,20 @@ export function ReviewAndKitView({
                     Bedrooms
                   </label>
                   <input
+                    id="spec-field-bedrooms"
                     type="number"
                     value={data.bedrooms ?? ""}
+                    onFocus={() => handleSelectCanvasItem("bedrooms", "text")}
                     onChange={(e) =>
                       updateField(
                         "bedrooms",
                         e.target.value ? parseInt(e.target.value, 10) : null
                       )
                     }
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm focus:outline-none ${
-                      isMissing(data.bedrooms)
+                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
+                      selectedCanvasItemId === "bedrooms"
+                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
+                        : isMissing(data.bedrooms)
                         ? "border-amber-300 bg-amber-50/50"
                         : "border-slate-200"
                     }`}
@@ -444,18 +664,22 @@ export function ReviewAndKitView({
                     Price (Naira)
                   </label>
                   <input
+                    id="spec-field-priceNGN"
                     type="number"
                     value={data.priceNGN ?? ""}
+                    onFocus={() => handleSelectCanvasItem("priceNGN", "text")}
                     onChange={(e) =>
                       updateField(
                         "priceNGN",
                         e.target.value ? parseInt(e.target.value, 10) : null
                       )
                     }
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm font-bold text-[#1B494E] focus:outline-none ${
-                      isMissing(data.priceNGN)
-                        ? "border-amber-300 bg-amber-50/50"
-                        : "border-slate-200"
+                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm font-bold transition-all focus:outline-none ${
+                      selectedCanvasItemId === "priceNGN"
+                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 text-[#F26522] shadow-xs"
+                        : isMissing(data.priceNGN)
+                        ? "border-amber-300 bg-amber-50/50 text-[#1B494E]"
+                        : "border-slate-200 text-[#1B494E]"
                     }`}
                   />
                 </div>
@@ -466,11 +690,15 @@ export function ReviewAndKitView({
                     Documentation / Title
                   </label>
                   <input
+                    id="spec-field-documentation"
                     type="text"
                     value={data.documentation}
+                    onFocus={() => handleSelectCanvasItem("documentation", "text")}
                     onChange={(e) => updateField("documentation", e.target.value)}
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm focus:outline-none ${
-                      isMissing(data.documentation)
+                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
+                      selectedCanvasItemId === "documentation"
+                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
+                        : isMissing(data.documentation)
                         ? "border-amber-300 bg-amber-50/50"
                         : "border-slate-200"
                     }`}
@@ -479,7 +707,14 @@ export function ReviewAndKitView({
               </div>
 
               {/* Furnished Status */}
-              <div>
+              <div
+                id="spec-field-furnished"
+                className={`p-2.5 rounded-xl transition-all ${
+                  selectedCanvasItemId === "furnished"
+                    ? "ring-2 ring-[#F26522] bg-orange-50/20"
+                    : ""
+                }`}
+              >
                 <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">
                   Furnished Status
                 </label>
@@ -492,7 +727,10 @@ export function ReviewAndKitView({
                     <button
                       key={opt.label}
                       type="button"
-                      onClick={() => updateField("furnished", opt.value)}
+                      onClick={() => {
+                        handleSelectCanvasItem("furnished", "text");
+                        updateField("furnished", opt.value);
+                      }}
                       className={`px-4 py-2 rounded-lg text-xs font-bold border transition-transform duration-150 ease-out cursor-pointer active:scale-[0.98] ${
                         data.furnished === opt.value
                           ? "bg-[#F26522] border-[#F26522] text-white shadow-xs"
@@ -659,25 +897,25 @@ export function ReviewAndKitView({
               </div>
 
               {/* All Generated Outputs Gallery Grid (Multi-Image Processed Individually) */}
-              {images.length > 1 && (
+              {localImages.length > 1 && (
                 <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <div>
                       <h3 className="font-extrabold text-[#1B494E] text-xs uppercase tracking-wider flex items-center gap-1.5">
                         <Images size={15} />
-                        <span>All Generated Outputs ({images.length} Flyers)</span>
+                        <span>All Generated Outputs ({localImages.length} Flyers)</span>
                       </h3>
                       <p className="text-[11px] text-slate-500 mt-0.5">
                         Each uploaded image was processed individually using the {selectedTemplate.toUpperCase()} template.
                       </p>
                     </div>
                     <span className="text-[10px] font-bold text-slate-600 px-2 py-0.5 bg-slate-100 rounded-md">
-                      {images.length} Outputs
+                      {localImages.length} Outputs
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {images.map((img, idx) => {
+                    {localImages.map((img, idx) => {
                       const isCurrent = idx === safeActiveIndex;
                       return (
                         <div
@@ -781,7 +1019,7 @@ export function ReviewAndKitView({
                 Live Flyer Preview
               </span>
               <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#1B494E] text-white">
-                {images.length <= 1 ? "1 Flyer" : `${images.length} Flyers`}
+                {localImages.length <= 1 ? "1 Flyer" : `${localImages.length} Flyers`}
               </span>
             </div>
             <span className="text-[11px] font-semibold text-slate-400">
@@ -902,8 +1140,8 @@ export function ReviewAndKitView({
             </div>
           </div>
 
-          {/* Multi-Image Flyer Pager Bar (Shown when images.length > 1) */}
-          {images.length > 1 && (
+          {/* Multi-Image Flyer Pager Bar (Shown when localImages.length > 1) */}
+          {localImages.length > 1 && (
             <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -912,7 +1150,7 @@ export function ReviewAndKitView({
                   </div>
                   <div>
                     <div className="text-xs font-extrabold text-[#1B494E] leading-tight">
-                      Flyer {safeActiveIndex + 1} of {images.length}
+                      Flyer {safeActiveIndex + 1} of {localImages.length}
                     </div>
                     <div className="text-[10px] text-slate-500">
                       {selectedTemplate.toUpperCase()} Template
@@ -932,8 +1170,8 @@ export function ReviewAndKitView({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveImageIndex((prev) => Math.min(images.length - 1, prev + 1))}
-                    disabled={safeActiveIndex === images.length - 1}
+                    onClick={() => setActiveImageIndex((prev) => Math.min(localImages.length - 1, prev + 1))}
+                    disabled={safeActiveIndex === localImages.length - 1}
                     className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-transform duration-120 active:scale-[0.98] cursor-pointer"
                     title="Next flyer"
                   >
@@ -944,7 +1182,7 @@ export function ReviewAndKitView({
 
               {/* Thumbnails Quick Switcher Strip */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
-                {images.map((img, idx) => {
+                {localImages.map((img, idx) => {
                   const isActive = idx === safeActiveIndex;
                   return (
                     <button
@@ -972,19 +1210,114 @@ export function ReviewAndKitView({
             </div>
           )}
 
+          {/* Hidden File Input for Container Slot Uploads */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageSlotUpload}
+          />
+
+          {/* Interactive Canvas Element Inspector Bar */}
+          {selectedCanvasItemId ? (
+            <div className="bg-[#1B494E] text-white p-3 rounded-xl shadow-md border border-teal-800 flex flex-wrap items-center justify-between gap-2.5 transition-all">
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm">
+                  {selectedCanvasItemType === "image" ? "📷" : "✏️"}
+                </span>
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-teal-300">
+                    Selected Element
+                  </div>
+                  <div className="text-xs font-black text-white">
+                    {getItemLabel(selectedCanvasItemId)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Image slot actions */}
+                {selectedCanvasItemType === "image" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageUploadTargetSlot(selectedCanvasItemId);
+                      fileInputRef.current?.click();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-[#F26522] hover:bg-[#d95315] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-transform duration-120 active:scale-95"
+                  >
+                    <Upload size={13} />
+                    <span>Upload Photo</span>
+                  </button>
+                )}
+
+                {/* Text slot inline editor */}
+                {selectedCanvasItemType === "text" && (
+                  <div className="flex items-center gap-2">
+                    {renderInlineQuickEditor(selectedCanvasItemId)}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (step !== "review") setStep("review");
+                        setTimeout(() => {
+                          const el = document.getElementById(
+                            `spec-field-${selectedCanvasItemId}`
+                          );
+                          el?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                          });
+                          el?.focus();
+                        }, 100);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-transform duration-120 active:scale-95"
+                    >
+                      <span>Focus in Form</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Deselect button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCanvasItemId(null);
+                    setSelectedCanvasItemType(null);
+                  }}
+                  className="p-1 rounded-md text-teal-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Deselect element"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-orange-50/70 border border-orange-100 text-orange-950 text-[11px]">
+              <span className="flex items-center gap-1.5 font-medium">
+                <span>💡</span>
+                <span>
+                  <strong>Interactive Canvas:</strong> Click any photo or text on the flyer to inspect, edit, or upload an image directly into that slot.
+                </span>
+              </span>
+            </div>
+          )}
+
           {/* Main Flyer Canvas */}
           <FlyerCanvas
             data={data}
-            settings={settings}
+            settings={effectiveSettings}
             svgRef={svgRef}
             primaryImage={currentActiveImage}
             secondaryImages={
-              images
+              localImages
                 .filter((_, idx) => idx !== safeActiveIndex)
                 .map((img) => img.url)
             }
             templateId={selectedTemplate}
             customTemplate={currentSelectedCustomTemplate}
+            selectedItemId={selectedCanvasItemId}
+            onSelectItem={handleSelectCanvasItem}
           />
         </div>
       </div>
@@ -1003,7 +1336,7 @@ export function ReviewAndKitView({
         }}
         aria-hidden="true"
       >
-        {images.map((img, idx) => (
+        {localImages.map((img, idx) => (
           <div
             key={img.id || idx}
             ref={(el) => {
@@ -1015,10 +1348,10 @@ export function ReviewAndKitView({
           >
             <FlyerCanvas
               data={data}
-              settings={settings}
+              settings={effectiveSettings}
               primaryImage={img.url}
               secondaryImages={
-                images
+                localImages
                   .filter((_, i) => i !== idx)
                   .map((m) => m.url)
               }
