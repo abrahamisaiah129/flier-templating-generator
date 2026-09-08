@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -19,7 +19,7 @@ import {
   Upload,
 } from "lucide-react";
 import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
-import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
+import { FlyerCanvas, svgToPngBlob, getTemplateImageSlots, FlierImageSlot } from "./FlyerCanvas";
 import { EMPTY_FIELD, TEMPLATES_CONFIG } from "../utils/constants";
 import { generateCaption } from "../utils/extractor";
 import { getStoredCustomTemplates, deleteStoredCustomTemplate } from "../utils/storage";
@@ -156,9 +156,94 @@ export function ReviewAndKitView({
       ? localImages[safeActiveIndex]?.url || null
       : localImages.find((img) => img.id === primaryId)?.url || null;
 
+  const currentTemplateImageSlots: FlierImageSlot[] = useMemo(() => {
+    return getTemplateImageSlots(selectedTemplate);
+  }, [selectedTemplate]);
+
   const handleSelectCanvasItem = (itemId: string | null, itemType: "text" | "image") => {
     setSelectedCanvasItemId(itemId);
     setSelectedCanvasItemType(itemType);
+
+    if (itemId && itemType === "text") {
+      // Auto-scroll to and focus the corresponding input in the specification form
+      const fieldIdMap: Record<string, string> = {
+        priceNGN: "spec-field-priceNGN",
+        location: "spec-field-location",
+        bedrooms: "spec-field-bedrooms",
+        propertyTitle: "spec-field-propertyTitle",
+        documentation: "spec-field-documentation",
+        furnished: "spec-field-furnished",
+      };
+
+      const targetInputId = fieldIdMap[itemId] || `spec-field-${itemId}`;
+      setTimeout(() => {
+        const el = document.getElementById(targetInputId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+            el.focus();
+          }
+        }
+      }, 50);
+    } else if (itemId && itemType === "image") {
+      setImageUploadTargetSlot(itemId);
+    }
+  };
+
+  const handleAssignExistingImageToSlot = (slotId: string, url: string, name: string) => {
+    if (slotId === "logo") {
+      setCustomLogoUrl(url);
+      return;
+    }
+
+    if (slotId === "image-primary") {
+      const existingIdx = localImages.findIndex((img) => img.url === url);
+      if (existingIdx !== -1) {
+        setActiveImageIndex(existingIdx);
+      }
+      return;
+    }
+
+    if (slotId === "image-secondary-0" || slotId === "image-secondary-1") {
+      const secIdx = slotId === "image-secondary-0" ? 0 : 1;
+      setLocalImages((prev) => {
+        const activeIdx = Math.min(Math.max(0, activeImageIndex), Math.max(0, prev.length - 1));
+        const secondaryIndices: number[] = [];
+        prev.forEach((_, idx) => {
+          if (idx !== activeIdx) secondaryIndices.push(idx);
+        });
+
+        const targetRealIdx = secondaryIndices[secIdx];
+        if (targetRealIdx !== undefined) {
+          const updated = [...prev];
+          updated[targetRealIdx] = {
+            ...updated[targetRealIdx],
+            url,
+            name,
+          };
+          return updated;
+        } else {
+          return [...prev, { id: uid(), url, name }];
+        }
+      });
+    }
+  };
+
+  const handleRemoveSecondarySlot = (slotId: string) => {
+    const secIdx = slotId === "image-secondary-0" ? 0 : 1;
+    setLocalImages((prev) => {
+      const activeIdx = Math.min(Math.max(0, activeImageIndex), Math.max(0, prev.length - 1));
+      const secondaryIndices: number[] = [];
+      prev.forEach((_, idx) => {
+        if (idx !== activeIdx) secondaryIndices.push(idx);
+      });
+
+      const targetRealIdx = secondaryIndices[secIdx];
+      if (targetRealIdx !== undefined) {
+        return prev.filter((_, i) => i !== targetRealIdx);
+      }
+      return prev;
+    });
   };
 
   const handleImageSlotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -564,7 +649,111 @@ export function ReviewAndKitView({
         <div className="lg:col-span-7 space-y-6">
           {/* STEP 1: REVIEW FIELDS */}
           {step === "review" && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
+            <>
+              {/* Indexed Flyer Photo Slots Manager */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3.5">
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Images size={16} className="text-[#1B494E]" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-[#1B494E]">
+                      Flyer Photo Slots ({currentTemplateImageSlots.length} Containers)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Click container to inspect or upload image
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {currentTemplateImageSlots.map((slot) => {
+                    const isSelected = selectedCanvasItemId === slot.id;
+                    let slotImgUrl: string | null = null;
+                    if (slot.id === "image-primary") {
+                      slotImgUrl = currentActiveImage;
+                    } else if (slot.id === "image-secondary-0") {
+                      slotImgUrl = localImages.filter((_, idx) => idx !== safeActiveIndex)[0]?.url || null;
+                    } else if (slot.id === "image-secondary-1") {
+                      slotImgUrl = localImages.filter((_, idx) => idx !== safeActiveIndex)[1]?.url || null;
+                    } else if (slot.id === "logo") {
+                      slotImgUrl = customLogoUrl || settings.logoUrl || null;
+                    }
+
+                    return (
+                      <div
+                        key={slot.id}
+                        onClick={() => handleSelectCanvasItem(slot.id, "image")}
+                        className={`p-3 rounded-xl border bg-slate-50/70 hover:bg-slate-50 transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-[#F26522] ring-2 ring-orange-500/30 shadow-xs bg-orange-50/20"
+                            : "border-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {slotImgUrl ? (
+                            <img
+                              src={slotImgUrl}
+                              alt={slot.label}
+                              className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0 bg-white"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg border-2 border-dashed border-slate-300 bg-white flex items-center justify-center text-slate-400 shrink-0">
+                              <Upload size={16} />
+                            </div>
+                          )}
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-bold text-slate-800 truncate">
+                                {slot.label}
+                              </span>
+                              {slot.isCover && (
+                                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-orange-100 text-[#F26522]">
+                                  COVER
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                              ID: {slot.id}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/70 flex items-center justify-between gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageUploadTargetSlot(slot.id);
+                              fileInputRef.current?.click();
+                            }}
+                            className="px-3 py-1 rounded-lg bg-[#1B494E] hover:bg-[#14383C] text-white text-[11px] font-bold flex items-center gap-1.5 transition-transform duration-120 cursor-pointer active:scale-95"
+                          >
+                            <Upload size={11} />
+                            <span>{slotImgUrl ? "Change Photo" : "Upload Photo"}</span>
+                          </button>
+
+                          {slotImgUrl && (slot.id === "image-secondary-0" || slot.id === "image-secondary-1") && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveSecondarySlot(slot.id);
+                              }}
+                              className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                              title="Clear photo in this container"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Property Specifications */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
               <h3 className="text-xs font-black uppercase tracking-wider text-[#1B494E] pb-3 border-b border-slate-100">
                 Property Specifications
               </h3>
@@ -793,6 +982,7 @@ export function ReviewAndKitView({
                 </button>
               </div>
             </div>
+            </>
           )}
 
           {/* STEP 2: MARKETING KIT CONTROLS & CAPTION */}
@@ -1239,17 +1429,43 @@ export function ReviewAndKitView({
               <div className="flex items-center gap-2">
                 {/* Image slot actions */}
                 {selectedCanvasItemType === "image" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageUploadTargetSlot(selectedCanvasItemId);
-                      fileInputRef.current?.click();
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-[#F26522] hover:bg-[#d95315] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-transform duration-120 active:scale-95"
-                  >
-                    <Upload size={13} />
-                    <span>Upload Photo</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageUploadTargetSlot(selectedCanvasItemId);
+                        fileInputRef.current?.click();
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-[#F26522] hover:bg-[#d95315] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-transform duration-120 active:scale-95"
+                    >
+                      <Upload size={13} />
+                      <span>Upload Photo</span>
+                    </button>
+
+                    {/* Quick photo assignment from localImages */}
+                    {localImages.length > 0 && selectedCanvasItemId !== "logo" && (
+                      <div className="flex items-center gap-1 bg-black/25 px-2 py-1 rounded-lg">
+                        <span className="text-[10px] text-teal-200 font-bold">Assign:</span>
+                        {localImages.map((img, qIdx) => (
+                          <button
+                            key={img.id || qIdx}
+                            type="button"
+                            onClick={() =>
+                              handleAssignExistingImageToSlot(
+                                selectedCanvasItemId,
+                                img.url,
+                                img.name
+                              )
+                            }
+                            className="px-2 py-0.5 rounded bg-white/10 hover:bg-[#F26522] text-white text-[10px] font-bold transition-colors cursor-pointer"
+                            title={`Assign Photo #${qIdx + 1} (${img.name}) to this slot`}
+                          >
+                            Photo #{qIdx + 1}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* Text slot inline editor */}
@@ -1318,6 +1534,10 @@ export function ReviewAndKitView({
             customTemplate={currentSelectedCustomTemplate}
             selectedItemId={selectedCanvasItemId}
             onSelectItem={handleSelectCanvasItem}
+            onTriggerUpload={(slotId) => {
+              setImageUploadTargetSlot(slotId);
+              fileInputRef.current?.click();
+            }}
           />
         </div>
       </div>
