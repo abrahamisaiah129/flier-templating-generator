@@ -175,7 +175,7 @@ export function NewPropertyView({
     if (images.length >= maxAllowed) {
       if (briefs.length === 1) {
         setLocalError(
-          "You cannot upload 2 or 3 images for just 1 brief. Please add another brief below first to attach Photo #2."
+          "You cannot upload 2 or 3 images for just 1 brief. Please add another brief below first to attach Photo 2."
         );
       } else {
         setLocalError(
@@ -189,7 +189,7 @@ export function NewPropertyView({
     if (allowed.length > remainingSlots) {
       if (briefs.length === 1) {
         setLocalError(
-          "You cannot upload 2 or 3 images for just 1 brief. Only 1 image was attached for Brief #1. Click '+ Add another brief' to attach Photo #2."
+          "You cannot upload 2 or 3 images for just 1 brief. Only 1 image was attached for Brief 1. Click 'Add Property Brief' to attach Photo 2."
         );
       } else {
         setLocalError(
@@ -242,14 +242,14 @@ export function NewPropertyView({
     }
 
     if (images.length === 0) {
-      setLocalError("Please upload Image #1 for Brief #1.");
+      setLocalError("Please upload Image 1 for Brief 1.");
       return;
     }
 
     const filledBriefsCount = briefs.filter((b) => b.trim().length > 0).length;
     if (images.length < filledBriefsCount) {
       setLocalError(
-        `You have ${filledBriefsCount} briefs but only ${images.length} image(s) uploaded. Please upload Image #${images.length + 1} for Brief #${images.length + 1} (each brief requires 1 image).`
+        `You have ${filledBriefsCount} briefs but only ${images.length} image(s) uploaded. Please upload Image ${images.length + 1} for Brief ${images.length + 1} (each brief requires 1 image).`
       );
       return;
     }
@@ -303,28 +303,27 @@ export function NewPropertyView({
         <div className="space-y-3.5">
           {briefs.map((brief, idx) => (
             <div key={idx} className="relative group">
-              {briefs.length > 1 && (
-                <div className="flex items-center justify-between mb-1.5 px-1">
-                  <span className="text-xs font-bold text-[#1B494E] flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-[#1B494E] text-white text-[10px] font-black flex items-center justify-center">
-                      {idx + 1}
-                    </span>
-                    <span>Brief #{idx + 1}</span>
+              <div className="flex items-center justify-between mb-1.5 px-1">
+                <span className="text-xs font-bold text-[#1B494E] flex items-center gap-1.5">
+                  <span>Brief {idx + 1}</span>
+                  {briefs.length > 1 && (
                     <span className="text-[10px] font-semibold text-[#F26522]">
-                      (Paired with Image #{idx + 1})
+                      (Paired with Image {idx + 1})
                     </span>
-                  </span>
+                  )}
+                </span>
+                {briefs.length > 1 && (
                   <button
                     type="button"
                     onClick={() => handleRemoveBrief(idx)}
-                    className="text-xs font-semibold text-slate-400 hover:text-red-600 flex items-center gap-1 cursor-pointer"
-                    title={`Remove brief #${idx + 1}`}
+                    className="text-xs font-semibold text-slate-400 hover:text-red-600 flex items-center gap-1 cursor-pointer transition-colors"
+                    title={`Remove brief ${idx + 1}`}
                   >
                     <X size={13} />
                     <span>Remove</span>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
               <textarea
                 value={brief}
                 onChange={(e) => handleBriefChange(idx, e.target.value)}
@@ -332,7 +331,7 @@ export function NewPropertyView({
                 placeholder={
                   idx === 0
                     ? "Paste raw text, WhatsApp messages, or notes here. We'll automatically structure the details for your flyer."
-                    : `Paste raw text, WhatsApp messages, or notes for brief #${idx + 1} here...`
+                    : `Paste raw text, WhatsApp messages, or notes for brief ${idx + 1} here...`
                 }
                 className="w-full p-4 rounded-xl bg-[#E6EEEE]/60 border border-slate-300/70 text-slate-800 text-sm placeholder:text-slate-500/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/30 focus:border-[#1B494E] transition-all resize-y"
               />
@@ -401,7 +400,7 @@ export function NewPropertyView({
                   <span className="text-xs text-teal-100/80 font-medium block">
                     {images.length >= briefs.length
                       ? "All images uploaded · Ready to generate flyer"
-                      : `Upload ${briefs.length - images.length} more image for Brief #${images.length + 1}`}
+                      : `Upload ${briefs.length - images.length} more image for Brief ${images.length + 1}`}
                   </span>
                 </div>
               </div>
@@ -412,7 +411,7 @@ export function NewPropertyView({
                   className="text-xs font-bold px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg border border-white/20 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <Plus size={13} />
-                  <span>Add Photo #{images.length + 1}</span>
+                  <span>Add Photo {images.length + 1}</span>
                 </button>
               )}
             </div>
@@ -437,10 +436,7 @@ export function NewPropertyView({
                     {/* Image Number Tag & Primary Indicator: Marked 1, 2, 3 for each brief */}
                     <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
                       <div className="bg-[#1B494E]/90 backdrop-blur-xs text-white text-[11px] font-extrabold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1.5 border border-white/20">
-                        <span className="w-4 h-4 rounded-full bg-[#F26522] text-white text-[10px] flex items-center justify-center font-black">
-                          {idx + 1}
-                        </span>
-                        <span>Brief #{idx + 1}</span>
+                        <span>Brief {idx + 1}</span>
                       </div>
                       {isPrimary ? (
                         <div className="bg-[#F26522] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
@@ -474,9 +470,9 @@ export function NewPropertyView({
                         {img.name}
                       </div>
                       <div className="text-[10px] text-[#F26522] font-extrabold flex items-center gap-1">
-                        <span>Image #{idx + 1}</span>
+                        <span>Image {idx + 1}</span>
                         <span className="text-slate-400">·</span>
-                        <span className="text-[#1B494E]">Brief #{idx + 1}</span>
+                        <span className="text-[#1B494E]">Brief {idx + 1}</span>
                       </div>
                     </div>
                   </div>
@@ -491,8 +487,8 @@ export function NewPropertyView({
                   className="h-32 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1B494E] bg-slate-50/50 hover:bg-slate-50 flex flex-col items-center justify-center text-slate-500 hover:text-[#1B494E] transition-colors p-2 text-center cursor-pointer group"
                 >
                   <Plus size={22} className="mb-1 text-slate-400 group-hover:text-[#1B494E] group-hover:scale-110 transition-transform duration-150" />
-                  <span className="text-xs font-bold text-slate-700">Add Photo #{images.length + 1}</span>
-                  <span className="text-[10px] text-slate-400 font-medium mt-0.5">For Brief #{images.length + 1}</span>
+                  <span className="text-xs font-bold text-slate-700">Add Photo {images.length + 1}</span>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5">For Brief {images.length + 1}</span>
                 </button>
               ) : briefs.length < 3 ? (
                 <button
@@ -503,7 +499,7 @@ export function NewPropertyView({
                 >
                   <Plus size={22} className="mb-1 text-[#F26522] group-hover:scale-110 transition-transform duration-150" />
                   <span className="text-xs font-bold text-slate-700">Add Property Brief</span>
-                  <span className="text-[10px] text-slate-500 font-medium mt-0.5">To upload Photo #{briefs.length + 1}</span>
+                  <span className="text-[10px] text-slate-500 font-medium mt-0.5">To upload Photo {briefs.length + 1}</span>
                 </button>
               ) : null}
             </div>

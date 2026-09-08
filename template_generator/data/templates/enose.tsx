@@ -21,7 +21,7 @@ export const getEnoseItemBoxes = (hasSec: boolean): Record<string, FlierItemBox>
   "image-secondary-0": {
     id: "image-secondary-0",
     type: "image",
-    label: "Secondary Photo #1",
+    label: "Secondary Photo 1",
     x: 60,
     y: 740,
     width: 340,
@@ -82,7 +82,7 @@ export const getEnoseItemBoxes = (hasSec: boolean): Record<string, FlierItemBox>
 
 export const enoseImageSlots: FlierImageSlot[] = [
   { id: "image-primary", label: "Hero Background Photo", isCover: true, description: "Arch-top architectural hero photo frame" },
-  { id: "image-secondary-0", label: "Secondary Photo #1", isCover: false, description: "Gallery secondary rounded photo frame" },
+  { id: "image-secondary-0", label: "Secondary Photo 1", isCover: false, description: "Gallery secondary rounded photo frame" },
   { id: "logo", label: "Agency Brand Logo", isCover: false, description: "Top-left brand logo badge" },
 ];
 

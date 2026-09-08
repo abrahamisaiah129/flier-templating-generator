@@ -310,9 +310,9 @@ export function ReviewAndKitView({
       case "image-primary":
         return "Hero Background Photo";
       case "image-secondary-0":
-        return "Secondary Photo #1";
+        return "Secondary Photo 1";
       case "image-secondary-1":
-        return "Secondary Photo #2";
+        return "Secondary Photo 2";
       case "logo":
         return "Agency Logo";
       case "furnished":
@@ -1034,7 +1034,7 @@ export function ReviewAndKitView({
                       {downloading
                         ? "Rendering PNG..."
                         : images.length > 1
-                        ? `Download Flyer #${safeActiveIndex + 1} PNG`
+                        ? `Download Flyer ${safeActiveIndex + 1} PNG`
                         : `Download ${exportScale === 2 ? "2x Ultra HD " : ""}PNG`}
                     </span>
                   </button>
@@ -1123,7 +1123,7 @@ export function ReviewAndKitView({
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute top-1.5 left-1.5 bg-[#1B494E]/90 backdrop-blur-xs text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded shadow-xs">
-                              Flyer #{idx + 1}
+                              Flyer {idx + 1}
                             </div>
                             {idx === 0 && (
                               <div className="absolute top-1.5 right-1.5 bg-[#F26522] text-white text-[8px] font-bold px-1 py-0.5 rounded shadow-xs">
@@ -1391,7 +1391,7 @@ export function ReviewAndKitView({
                         className="w-full h-full object-cover"
                       />
                       <span className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[9px] font-bold text-center py-0.5">
-                        #{idx + 1}
+                        {idx + 1}
                       </span>
                     </button>
                   );
@@ -1458,9 +1458,9 @@ export function ReviewAndKitView({
                               )
                             }
                             className="px-2 py-0.5 rounded bg-white/10 hover:bg-[#F26522] text-white text-[10px] font-bold transition-colors cursor-pointer"
-                            title={`Assign Photo #${qIdx + 1} (${img.name}) to this slot`}
+                            title={`Assign Photo ${qIdx + 1} (${img.name}) to this slot`}
                           >
-                            Photo #{qIdx + 1}
+                            Photo ${qIdx + 1}
                           </button>
                         ))}
                       </div>

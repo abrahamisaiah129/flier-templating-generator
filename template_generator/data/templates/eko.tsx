@@ -22,7 +22,7 @@ export const getEkoItemBoxes = (hasSec: boolean): Record<string, FlierItemBox> =
   "image-secondary-0": {
     id: "image-secondary-0",
     type: "image",
-    label: "Secondary Photo #1",
+    label: "Secondary Photo 1",
     x: 60,
     y: 110,
     width: 480,
@@ -83,7 +83,7 @@ export const getEkoItemBoxes = (hasSec: boolean): Record<string, FlierItemBox> =
 
 export const ekoImageSlots: FlierImageSlot[] = [
   { id: "image-primary", label: "Hero Background Photo", isCover: true, description: "Full-bleed background hero photo" },
-  { id: "image-secondary-0", label: "Secondary Photo #1", isCover: false, description: "Top-left editorial photo inset" },
+  { id: "image-secondary-0", label: "Secondary Photo 1", isCover: false, description: "Top-left editorial photo inset" },
   { id: "logo", label: "Agency Brand Logo", isCover: false, description: "Bottom-right brand logo" },
 ];
 

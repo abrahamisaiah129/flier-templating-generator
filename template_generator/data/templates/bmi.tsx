@@ -12,7 +12,7 @@ export const getBmiItemBoxes = (hasSec1: boolean, hasSec2: boolean): Record<stri
   "image-primary": {
     id: "image-primary",
     type: "image",
-    label: "Hero Background (Photo #1)",
+    label: "Hero Background (Photo 1)",
     x: 8,
     y: 8,
     width: CANVAS_W - 16,
@@ -22,7 +22,7 @@ export const getBmiItemBoxes = (hasSec1: boolean, hasSec2: boolean): Record<stri
   "image-secondary-0": {
     id: "image-secondary-0",
     type: "image",
-    label: "Secondary Photo #1",
+    label: "Secondary Photo 1",
     x: hasSec2 ? 640 : 780,
     y: 55,
     width: hasSec2 ? 175 : 230,
@@ -32,7 +32,7 @@ export const getBmiItemBoxes = (hasSec1: boolean, hasSec2: boolean): Record<stri
   "image-secondary-1": {
     id: "image-secondary-1",
     type: "image",
-    label: "Secondary Photo #2",
+    label: "Secondary Photo 2",
     x: 830,
     y: 55,
     width: 175,
@@ -123,8 +123,8 @@ export const getBmiItemBoxes = (hasSec1: boolean, hasSec2: boolean): Record<stri
 
 export const bmiImageSlots: FlierImageSlot[] = [
   { id: "image-primary", label: "Hero Background Photo", isCover: true, description: "Full-bleed property background photo" },
-  { id: "image-secondary-0", label: "Secondary Photo #1", isCover: false, description: "Top-right secondary property thumbnail" },
-  { id: "image-secondary-1", label: "Secondary Photo #2", isCover: false, description: "Top-right secondary property thumbnail" },
+  { id: "image-secondary-0", label: "Secondary Photo 1", isCover: false, description: "Top-right secondary property thumbnail" },
+  { id: "image-secondary-1", label: "Secondary Photo 2", isCover: false, description: "Top-right secondary property thumbnail" },
   { id: "logo", label: "Agency Logo", isCover: false, description: "Top-left agency header badge" },
 ];
 
