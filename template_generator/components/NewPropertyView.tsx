@@ -304,13 +304,8 @@ export function NewPropertyView({
           {briefs.map((brief, idx) => (
             <div key={idx} className="relative group">
               <div className="flex items-center justify-between mb-1.5 px-1">
-                <span className="text-xs font-bold text-[#1B494E] flex items-center gap-1.5">
-                  <span>Brief {idx + 1}</span>
-                  {briefs.length > 1 && (
-                    <span className="text-[10px] font-semibold text-[#F26522]">
-                      (Paired with Image {idx + 1})
-                    </span>
-                  )}
+                <span className="text-xs font-bold text-[#1B494E]">
+                  Brief {idx + 1}
                 </span>
                 {briefs.length > 1 && (
                   <button
