@@ -16,6 +16,8 @@ import {
   Images,
   Trash2,
   Upload,
+  RotateCcw,
+  Move,
 } from "lucide-react";
 import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
 import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
@@ -119,6 +121,34 @@ export function ReviewAndKitView({
   const [generating, setGenerating] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const offscreenSvgs = useRef<(SVGSVGElement | null)[]>([]);
+
+  // Draggable element offsets per property
+  const [itemOffsetsMap, setItemOffsetsMap] = useState<Record<number, Record<string, { dx: number; dy: number }>>>({});
+  const currentItemOffsets = itemOffsetsMap[safePropIndex] || {};
+
+  const handleItemOffsetsChange = (offsets: Record<string, { dx: number; dy: number }>) => {
+    setItemOffsetsMap((prev) => ({
+      ...prev,
+      [safePropIndex]: offsets,
+    }));
+  };
+
+  const handleResetActiveItemPosition = () => {
+    if (!selectedCanvasItemId) return;
+    setItemOffsetsMap((prev) => {
+      const current = { ...(prev[safePropIndex] || {}) };
+      delete current[selectedCanvasItemId];
+      return { ...prev, [safePropIndex]: current };
+    });
+  };
+
+  const handleResetAllPositions = () => {
+    setItemOffsetsMap((prev) => {
+      const copy = { ...prev };
+      delete copy[safePropIndex];
+      return copy;
+    });
+  };
 
   // Bound index safely within localImages range
   const safeActiveIndex =
@@ -1345,6 +1375,27 @@ export function ReviewAndKitView({
                   </div>
                 )}
 
+                {/* Drag repositioning badge & Reset button */}
+                {selectedCanvasItemId && currentItemOffsets[selectedCanvasItemId] && (currentItemOffsets[selectedCanvasItemId].dx !== 0 || currentItemOffsets[selectedCanvasItemId].dy !== 0) && (
+                  <div className="flex items-center gap-1.5 bg-black/25 px-2.5 py-1 rounded-lg">
+                    <span className="text-[10px] text-teal-200 font-bold flex items-center gap-1">
+                      <Move size={11} />
+                      <span>
+                        {currentItemOffsets[selectedCanvasItemId].dx > 0 ? `+${currentItemOffsets[selectedCanvasItemId].dx}` : currentItemOffsets[selectedCanvasItemId].dx}px, {currentItemOffsets[selectedCanvasItemId].dy > 0 ? `+${currentItemOffsets[selectedCanvasItemId].dy}` : currentItemOffsets[selectedCanvasItemId].dy}px
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleResetActiveItemPosition}
+                      className="ml-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Reset element to original template position"
+                    >
+                      <RotateCcw size={10} />
+                      <span>Reset</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Deselect button */}
                 <button
                   type="button"
@@ -1364,9 +1415,20 @@ export function ReviewAndKitView({
               <span className="flex items-center gap-1.5 font-medium">
                 <span>💡</span>
                 <span>
-                  <strong>Interactive Canvas:</strong> Click any photo or text on the flyer to inspect, edit, or upload an image directly into that slot.
+                  <strong>Interactive Canvas:</strong> Click & drag any text, badge, logo, or photo to reposition it. Click to edit in form or swap photos.
                 </span>
               </span>
+              {Object.keys(currentItemOffsets).length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetAllPositions}
+                  className="text-[10px] font-bold text-[#F26522] hover:text-[#d95315] flex items-center gap-1 cursor-pointer flex-shrink-0 ml-2"
+                  title="Reset all customized positions on this flyer"
+                >
+                  <RotateCcw size={11} />
+                  <span>Reset All</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -1389,6 +1451,9 @@ export function ReviewAndKitView({
               setImageUploadTargetSlot(slotId);
               fileInputRef.current?.click();
             }}
+            itemOffsets={currentItemOffsets}
+            onItemOffsetsChange={handleItemOffsetsChange}
+            draggable={true}
           />
         </div>
       </div>
@@ -1428,6 +1493,8 @@ export function ReviewAndKitView({
               }
               templateId={selectedTemplate}
               customTemplate={currentSelectedCustomTemplate}
+              itemOffsets={itemOffsetsMap[idx] || {}}
+              draggable={false}
             />
           </div>
         ))}

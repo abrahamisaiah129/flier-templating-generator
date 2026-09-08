@@ -120,6 +120,9 @@ interface FlyerCanvasProps {
   selectedItemId?: string | null;
   onSelectItem?: (itemId: string | null, itemType: "text" | "image") => void;
   onTriggerUpload?: (slotId: string) => void;
+  itemOffsets?: Record<string, { dx: number; dy: number }>;
+  onItemOffsetsChange?: (offsets: Record<string, { dx: number; dy: number }>) => void;
+  draggable?: boolean;
 }
 
 export function FlyerCanvas({
@@ -135,6 +138,9 @@ export function FlyerCanvas({
   selectedItemId,
   onSelectItem,
   onTriggerUpload,
+  itemOffsets,
+  onItemOffsetsChange,
+  draggable = true,
 }: FlyerCanvasProps) {
   // Ingest image from URL parameters if primaryImage is not provided
   const resolvedPrimaryImage = (() => {
@@ -207,6 +213,154 @@ export function FlyerCanvas({
   const hasSec1 = resolvedSecondaryImages.length > 0;
   const hasSec2 = resolvedSecondaryImages.length > 1;
 
+  // Local or controlled item offsets
+  const [internalOffsets, setInternalOffsets] = React.useState<Record<string, { dx: number; dy: number }>>({});
+  const effectiveOffsets = itemOffsets !== undefined ? itemOffsets : internalOffsets;
+
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragInfoRef = React.useRef<{
+    itemId: string;
+    itemType: "text" | "image";
+    startSvgX: number;
+    startSvgY: number;
+    startDx: number;
+    startDy: number;
+    itemBox: FlierItemBox | null;
+    hasMoved: boolean;
+  } | null>(null);
+
+  // Helper to convert screen coordinates to SVG viewBox coordinates (0..1080, 0..1350)
+  const screenToSvgCoords = (clientX: number, clientY: number): { x: number; y: number } | null => {
+    const svg = svgRef?.current;
+    if (!svg) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const transformed = pt.matrixTransform(ctm.inverse());
+    return { x: transformed.x, y: transformed.y };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return;
+
+    const target = (e.target as Element).closest("[data-flier-item]");
+    const overlayTarget = (e.target as Element).closest(".flier-selection-overlay");
+
+    let targetId: string | null = null;
+    let targetType: "text" | "image" = "text";
+
+    if (target) {
+      targetId = target.getAttribute("data-flier-item");
+      targetType = (target.getAttribute("data-flier-type") || "text") as "text" | "image";
+    } else if (overlayTarget && selectedItemId) {
+      targetId = selectedItemId;
+      targetType = activeBox?.type || "text";
+    }
+
+    if (!targetId) {
+      onSelectItem?.(null, "text");
+      return;
+    }
+
+    onSelectItem?.(targetId, targetType);
+
+    if (draggable === false || targetId === "image-primary") {
+      return;
+    }
+
+    const svgCoords = screenToSvgCoords(e.clientX, e.clientY);
+    if (!svgCoords) return;
+
+    const boxes = getTemplateItemBoxes(templateId, hasSec1, hasSec2);
+    const box = boxes[targetId] || null;
+    const currentOffset = effectiveOffsets[targetId] || { dx: 0, dy: 0 };
+
+    dragInfoRef.current = {
+      itemId: targetId,
+      itemType: targetType,
+      startSvgX: svgCoords.x,
+      startSvgY: svgCoords.y,
+      startDx: currentOffset.dx,
+      startDy: currentOffset.dy,
+      itemBox: box,
+      hasMoved: false,
+    };
+
+    try {
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    } catch {
+      // Ignored
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!dragInfoRef.current) return;
+    const info = dragInfoRef.current;
+    const svgCoords = screenToSvgCoords(e.clientX, e.clientY);
+    if (!svgCoords) return;
+
+    const deltaX = svgCoords.x - info.startSvgX;
+    const deltaY = svgCoords.y - info.startSvgY;
+
+    if (!info.hasMoved && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+      info.hasMoved = true;
+      setIsDragging(true);
+    }
+
+    if (!info.hasMoved) return;
+
+    let newDx = info.startDx + deltaX;
+    let newDy = info.startDy + deltaY;
+
+    if (info.itemBox) {
+      const minDx = -info.itemBox.x + 10;
+      const maxDx = CANVAS_W - (info.itemBox.x + info.itemBox.width) - 10;
+      newDx = Math.max(minDx, Math.min(maxDx, newDx));
+
+      const minDy = -info.itemBox.y + 10;
+      const maxDy = CANVAS_H - (info.itemBox.y + info.itemBox.height) - 10;
+      newDy = Math.max(minDy, Math.min(maxDy, newDy));
+    }
+
+    const nextOffsets = {
+      ...effectiveOffsets,
+      [info.itemId]: { dx: Math.round(newDx), dy: Math.round(newDy) },
+    };
+
+    setInternalOffsets(nextOffsets);
+    onItemOffsetsChange?.(nextOffsets);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (dragInfoRef.current) {
+      try {
+        (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignored
+      }
+      dragInfoRef.current = null;
+      setIsDragging(false);
+    }
+  };
+
+  // Sync transform changes for custom SVG templates
+  React.useEffect(() => {
+    if (!isCustom || !svgRef?.current) return;
+    const svgEl = svgRef.current;
+    Object.entries(effectiveOffsets).forEach(([itemId, off]) => {
+      const el = svgEl.querySelector(`[data-flier-item="${itemId}"]`);
+      if (el) {
+        if (off.dx || off.dy) {
+          el.setAttribute("transform", `translate(${off.dx}, ${off.dy})`);
+        } else {
+          el.removeAttribute("transform");
+        }
+      }
+    });
+  }, [isCustom, effectiveOffsets, processedCustomSvgInner, svgRef]);
+
   // Active Bounding Box for the selected element
   const activeBox = useMemo(() => {
     if (!selectedItemId) return null;
@@ -214,19 +368,7 @@ export function FlyerCanvas({
     return boxes[selectedItemId] || null;
   }, [selectedItemId, templateId, hasSec1, hasSec2]);
 
-  const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    const target = (e.target as Element).closest("[data-flier-item]");
-    if (target) {
-      const itemId = target.getAttribute("data-flier-item");
-      const itemType = (target.getAttribute("data-flier-type") || "text") as "text" | "image";
-      if (itemId) {
-        onSelectItem?.(itemId, itemType);
-        return;
-      }
-    }
-    // Deselect if clicked outside an indexed item
-    onSelectItem?.(null, "text");
-  };
+  const activeOffset = selectedItemId ? effectiveOffsets[selectedItemId] || { dx: 0, dy: 0 } : { dx: 0, dy: 0 };
 
   const handleCanvasDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
     const target = (e.target as Element).closest("[data-flier-item]");
@@ -249,8 +391,11 @@ export function FlyerCanvas({
         width="100%"
         xmlns="http://www.w3.org/2000/svg"
         xmlnsXlink="http://www.w3.org/1999/xlink"
-        className="block w-full h-auto select-none cursor-default"
-        onClick={handleCanvasClick}
+        className={`block w-full h-auto select-none ${isDragging ? "cursor-grabbing" : "cursor-default"}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         onDoubleClick={handleCanvasDoubleClick}
         style={{
           background:
@@ -281,6 +426,13 @@ export function FlyerCanvas({
             }
             .flier-font {
               font-family: 'Montserrat', var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }
+
+            [data-flier-item]:not([data-flier-item="image-primary"]) {
+              cursor: grab;
+            }
+            [data-flier-item]:not([data-flier-item="image-primary"]):active {
+              cursor: grabbing;
             }
           `}</style>
 
@@ -357,6 +509,7 @@ export function FlyerCanvas({
             docText={docText}
             selectedItemId={selectedItemId}
             onSelectItem={onSelectItem}
+            itemOffsets={effectiveOffsets}
           />
         )}
 
@@ -375,6 +528,7 @@ export function FlyerCanvas({
             docText={docText}
             selectedItemId={selectedItemId}
             onSelectItem={onSelectItem}
+            itemOffsets={effectiveOffsets}
           />
         )}
 
@@ -393,6 +547,7 @@ export function FlyerCanvas({
             docText={docText}
             selectedItemId={selectedItemId}
             onSelectItem={onSelectItem}
+            itemOffsets={effectiveOffsets}
           />
         )}
 
@@ -403,7 +558,10 @@ export function FlyerCanvas({
 
         {/* ON-CANVAS SELECTION OVERLAY & CONTROL HANDLES */}
         {activeBox && (
-          <g className="flier-selection-overlay pointer-events-none">
+          <g
+            className="flier-selection-overlay pointer-events-none"
+            transform={activeOffset.dx || activeOffset.dy ? `translate(${activeOffset.dx}, ${activeOffset.dy})` : undefined}
+          >
             {/* Outline Box */}
             <rect
               x={activeBox.x - 4}

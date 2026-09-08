@@ -150,7 +150,22 @@ export function BmiTemplate({
   bedroomNum,
   locationText,
   docText,
+  itemOffsets,
 }: TemplateRenderProps) {
+  const getTransform = (id: string, base?: string) => {
+    const off = itemOffsets?.[id];
+    if (!off || (off.dx === 0 && off.dy === 0)) return base || undefined;
+    if (base) {
+      const match = base.match(/translate\(([^,]+),\s*([^)]+)\)/);
+      if (match) {
+        const bx = parseFloat(match[1]) || 0;
+        const by = parseFloat(match[2]) || 0;
+        return `translate(${bx + off.dx}, ${by + off.dy})`;
+      }
+    }
+    return `translate(${off.dx}, ${off.dy})`;
+  };
+
   const { titleLines, highlightLines } = formatPropertyTypeLines(
     data.propertyType,
     data.features
@@ -199,6 +214,7 @@ export function BmiTemplate({
                 key={sIdx}
                 data-flier-item={`image-secondary-${sIdx}`}
                 data-flier-type="image"
+                transform={getTransform(`image-secondary-${sIdx}`)}
                 className="cursor-pointer"
               >
                 <defs>
@@ -251,6 +267,7 @@ export function BmiTemplate({
         filter="url(#bmiLogoShadow)"
         data-flier-item="logo"
         data-flier-type="image"
+        transform={getTransform("logo")}
         className="cursor-pointer"
       >
         <rect
@@ -278,6 +295,7 @@ export function BmiTemplate({
           filter="url(#badgeShadow)"
           data-flier-item="furnished"
           data-flier-type="text"
+          transform={getTransform("furnished")}
           className="cursor-pointer"
         >
           <path
@@ -313,6 +331,7 @@ export function BmiTemplate({
         <g
           data-flier-item="bedrooms"
           data-flier-type="text"
+          transform={getTransform("bedrooms")}
           className="cursor-pointer"
         >
           <text
@@ -383,6 +402,7 @@ export function BmiTemplate({
           filter="url(#cardShadow)"
           data-flier-item="documentation"
           data-flier-type="text"
+          transform={getTransform("documentation")}
           className="cursor-pointer"
         >
           <path
@@ -411,6 +431,7 @@ export function BmiTemplate({
           filter="url(#cardShadow)"
           data-flier-item="location"
           data-flier-type="text"
+          transform={getTransform("location")}
           className="cursor-pointer"
         >
           <path
@@ -445,6 +466,7 @@ export function BmiTemplate({
           filter="url(#cardShadow)"
           data-flier-item="priceNGN"
           data-flier-type="text"
+          transform={getTransform("priceNGN")}
           className="cursor-pointer"
         >
           <path
@@ -482,6 +504,7 @@ export function BmiTemplate({
           filter="url(#cardShadow)"
           data-flier-item="priceUsd"
           data-flier-type="text"
+          transform={getTransform("priceUsd")}
           className="cursor-pointer"
         >
           <path
@@ -508,7 +531,7 @@ export function BmiTemplate({
 
       {/* 4. Canvas Bottom Contact Footer */}
       <g
-        transform="translate(0, 1293)"
+        transform={getTransform("contact", "translate(0, 1293)")}
         data-flier-item="contact"
         data-flier-type="text"
         className="cursor-pointer"

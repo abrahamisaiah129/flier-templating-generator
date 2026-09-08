@@ -40,6 +40,7 @@ export interface TemplateRenderProps {
   docText: string;
   selectedItemId?: string | null;
   onSelectItem?: (itemId: string | null, itemType: "text" | "image") => void;
+  itemOffsets?: Record<string, { dx: number; dy: number }>;
 }
 
 export interface TemplateDefinition {

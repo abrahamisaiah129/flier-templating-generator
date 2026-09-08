@@ -100,7 +100,22 @@ export function EnoseTemplate({
   secondaryImages,
   fallbackColor,
   rawPriceNaira,
+  itemOffsets,
 }: TemplateRenderProps) {
+  const getTransform = (id: string, base?: string) => {
+    const off = itemOffsets?.[id];
+    if (!off || (off.dx === 0 && off.dy === 0)) return base || undefined;
+    if (base) {
+      const match = base.match(/translate\(([^,]+),\s*([^)]+)\)/);
+      if (match) {
+        const bx = parseFloat(match[1]) || 0;
+        const by = parseFloat(match[2]) || 0;
+        return `translate(${bx + off.dx}, ${by + off.dy})`;
+      }
+    }
+    return `translate(${off.dx}, ${off.dy})`;
+  };
+
   const enoseLocation = (() => {
     const loc = (data.location || "VICTORIA ISLAND, LAGOS").toUpperCase();
     const words = loc.split(" ");
@@ -130,6 +145,7 @@ export function EnoseTemplate({
         preserveAspectRatio="xMidYMid meet"
         data-flier-item="logo"
         data-flier-type="image"
+        transform={getTransform("logo")}
         className="cursor-pointer"
       />
 
@@ -171,6 +187,7 @@ export function EnoseTemplate({
                 key={sIdx}
                 data-flier-item={`image-secondary-${sIdx}`}
                 data-flier-type="image"
+                transform={getTransform(`image-secondary-${sIdx}`)}
                 className="cursor-pointer"
               >
                 <defs>
@@ -211,6 +228,7 @@ export function EnoseTemplate({
       <g
         data-flier-item="priceNGN"
         data-flier-type="text"
+        transform={getTransform("priceNGN")}
         className="cursor-pointer"
       >
         <rect
@@ -270,6 +288,7 @@ export function EnoseTemplate({
         <g
           data-flier-item="propertyTitle"
           data-flier-type="text"
+          transform={getTransform("propertyTitle")}
           className="cursor-pointer"
         >
           <text
@@ -289,6 +308,7 @@ export function EnoseTemplate({
         <g
           data-flier-item="location"
           data-flier-type="text"
+          transform={getTransform("location")}
           className="cursor-pointer"
         >
           <text

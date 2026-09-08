@@ -102,7 +102,22 @@ export function EkoTemplate({
   fallbackColor,
   rawPriceNaira,
   bedroomNum,
+  itemOffsets,
 }: TemplateRenderProps) {
+  const getTransform = (id: string, base?: string) => {
+    const off = itemOffsets?.[id];
+    if (!off || (off.dx === 0 && off.dy === 0)) return base || undefined;
+    if (base) {
+      const match = base.match(/translate\(([^,]+),\s*([^)]+)\)/);
+      if (match) {
+        const bx = parseFloat(match[1]) || 0;
+        const by = parseFloat(match[2]) || 0;
+        return `translate(${bx + off.dx}, ${by + off.dy})`;
+      }
+    }
+    return `translate(${off.dx}, ${off.dy})`;
+  };
+
   const ekoSpecLines = (() => {
     const line1 = `${bedroomNum} BEDROOM ${(data.propertyType || "DUPLEX").toUpperCase()}`;
     const feats = (data.features || []).filter(Boolean);
@@ -156,6 +171,7 @@ export function EkoTemplate({
                 key={sIdx}
                 data-flier-item={`image-secondary-${sIdx}`}
                 data-flier-type="image"
+                transform={getTransform(`image-secondary-${sIdx}`)}
                 className="cursor-pointer"
               >
                 <defs>
@@ -204,6 +220,7 @@ export function EkoTemplate({
         className="font-montserrat cursor-pointer"
         data-flier-item="location"
         data-flier-type="text"
+        transform={getTransform("location")}
       >
         {(data.location || "LEKKI PHASE 1").toUpperCase()}
       </text>
@@ -217,6 +234,7 @@ export function EkoTemplate({
         className="font-cinzel cursor-pointer"
         data-flier-item="priceNGN"
         data-flier-type="text"
+        transform={getTransform("priceNGN")}
       >
         {rawPriceNaira}
       </text>
@@ -236,6 +254,7 @@ export function EkoTemplate({
       <g
         data-flier-item="propertyTitle"
         data-flier-type="text"
+        transform={getTransform("propertyTitle")}
         className="cursor-pointer"
       >
         <text
@@ -296,6 +315,7 @@ export function EkoTemplate({
         className="font-montserrat cursor-pointer"
         data-flier-item="contact"
         data-flier-type="text"
+        transform={getTransform("contact")}
       >
         {FIXED_CONTACT.phone} · {FIXED_CONTACT.instagram}
       </text>
@@ -310,6 +330,7 @@ export function EkoTemplate({
         preserveAspectRatio="xMidYMid meet"
         data-flier-item="logo"
         data-flier-type="image"
+        transform={getTransform("logo")}
         className="cursor-pointer"
       />
     </g>
