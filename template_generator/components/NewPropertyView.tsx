@@ -132,54 +132,6 @@ export function NewPropertyView({
     );
   }, [selectedTemplateId, customTemplates.length]);
 
-  // Slot-based indexed image upload state
-  const [activeUploadSlot, setActiveUploadSlot] = useState<number | null>(null);
-  const slotFileInputRef = useRef<HTMLInputElement>(null);
-
-  const triggerSlotUpload = (idx: number) => {
-    setActiveUploadSlot(idx);
-    if (slotFileInputRef.current) {
-      slotFileInputRef.current.value = "";
-      slotFileInputRef.current.click();
-    }
-  };
-
-  const handleSlotImageFile = async (idx: number, fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0 || idx >= 3) return;
-    const file = fileList[0];
-    if (!/image\/(jpeg|jpg|png|webp)/i.test(file.type)) {
-      setLocalError("Please upload a valid image file (JPG, PNG, or WEBP).");
-      return;
-    }
-    try {
-      const url = await fileToDataUrl(file);
-      const newImg: UploadedImage = { id: uid(), url, name: file.name };
-      setImages((prev) => {
-        const updated = [...prev];
-        updated[idx] = newImg;
-        if (idx === 0 || !primaryId) {
-          setPrimaryId(updated[0]?.id || newImg.id);
-        }
-        return updated.slice(0, 3);
-      });
-      setLocalError(null);
-    } catch (err) {
-      console.error("Error reading file", err);
-    }
-  };
-
-  const handleRemoveSlotImage = (idx: number) => {
-    setImages((prev) => {
-      const updated = prev.filter((_, i) => i !== idx);
-      if (primaryId && !updated.find((img) => img.id === primaryId)) {
-        setPrimaryId(updated[0]?.id || null);
-      }
-      return updated;
-    });
-  };
-
-  const isImageComplete = images.length > 0;
-
   const handleBriefChange = (index: number, val: string) => {
     setBriefs((prev) => {
       const copy = [...prev];
@@ -197,13 +149,6 @@ export function NewPropertyView({
   const handleRemoveBrief = (index: number) => {
     if (briefs.length > 1) {
       setBriefs((prev) => prev.filter((_, i) => i !== index));
-      setImages((prev) => {
-        const nextImages = prev.filter((_, i) => i !== index);
-        if (primaryId && !nextImages.some((img) => img.id === primaryId)) {
-          setPrimaryId(nextImages[0]?.id || null);
-        }
-        return nextImages;
-      });
     }
   };
 
@@ -277,16 +222,7 @@ export function NewPropertyView({
     }
 
     if (images.length === 0) {
-      setLocalError("Please upload at least 1 property image (Photo #1).");
-      return;
-    }
-
-    // Validate that each filled brief has an associated image so no field is blank
-    const missingBriefIdx = briefs.findIndex((b, idx) => b.trim().length > 0 && !images[idx]);
-    if (missingBriefIdx !== -1) {
-      setLocalError(
-        `Brief #${missingBriefIdx + 1} has prompt text but no photo uploaded. Please upload Photo #${missingBriefIdx + 1} so the flyer field is not blank.`
-      );
+      setLocalError("Please upload at least 1 property image.");
       return;
     }
 
@@ -327,163 +263,41 @@ export function NewPropertyView({
             <h3 className="font-bold text-[#1B494E] text-base leading-none">
               Source brief
             </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              The unedited version is kept with the property.
-              {briefs.length > 1 && (
-                <span className="ml-1 text-[#F26522] font-medium">
-                  (You can paste up to three property briefs at once)
-                </span>
-              )}
-            </p>
+            {briefs.length > 1 && (
+              <p className="text-xs text-[#F26522] font-medium mt-1">
+                (You can paste up to three property briefs at once)
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Dynamic Brief Prompts with Indexed Image Slots */}
-        <div className="space-y-4">
-          {briefs.map((brief, idx) => {
-            const slotImage = images[idx] || null;
-            const isCover = idx === 0;
-
-            return (
-              <div
-                key={idx}
-                className="p-4 sm:p-5 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-3 transition-all"
-              >
-                {/* Prompt Header with Indexed Image Indicator */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1B494E] text-white text-xs font-black flex items-center justify-center">
-                      {idx + 1}
-                    </span>
-                    <span className="text-xs font-extrabold text-[#1B494E] uppercase tracking-wider">
-                      {briefs.length > 1 ? `Property Brief #${idx + 1} · Flyer #${idx + 1}` : "Property Brief Prompt"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {slotImage ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                        <CheckCircle2 size={12} className="text-emerald-600" />
-                        <span>Photo #{idx + 1} Attached</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                        <AlertCircle size={12} className="text-amber-600" />
-                        <span>Photo #{idx + 1} Required</span>
-                      </span>
-                    )}
-
-                    {briefs.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveBrief(idx)}
-                        className="p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                        title="Remove this brief"
-                      >
-                        <X size={15} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Prompt Textarea */}
-                <textarea
-                  value={brief}
-                  onChange={(e) => handleBriefChange(idx, e.target.value)}
-                  rows={idx === 0 ? 4 : 3}
-                  placeholder={
-                    idx === 0
-                      ? "Paste a whatsapp message, notes or brief in its unedited form. We will extract the necessary details for your design template. Something like 2 bedroom apartment in VGC, Lekki..."
-                      : `Paste brief ${idx + 1}...`
-                  }
-                  className="w-full p-3.5 rounded-xl bg-white border border-slate-300/70 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20 focus:border-[#1B494E] transition-all resize-y"
-                />
-
-                {/* Indexed Image Slot for this prompt */}
-                <div className="pt-2 border-t border-slate-200">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Required Image for Field #{idx + 1}:
-                    </span>
-                    {isCover && (
-                      <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-orange-100 text-[#F26522]">
-                        Cover Photo
-                      </span>
-                    )}
-                  </div>
-
-                  {slotImage ? (
-                    /* Attached State: User knows which image is selected */
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img
-                          src={slotImage.url}
-                          alt={slotImage.name}
-                          className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-800 truncate">
-                            {slotImage.name}
-                          </div>
-                          <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
-                            <CheckCircle2 size={12} />
-                            <span>Photo #{idx + 1} Selected for Flyer #{idx + 1}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => triggerSlotUpload(idx)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-[#1B494E] hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
-                        >
-                          Change
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSlotImage(idx)}
-                          className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                          title="Remove image"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Empty State: Direct upload into this slot so field is not blank */
-                    <div
-                      onClick={() => triggerSlotUpload(idx)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        handleSlotImageFile(idx, e.dataTransfer.files);
-                      }}
-                      className="flex items-center justify-between p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1B494E] bg-white hover:bg-slate-50 cursor-pointer transition-all group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-[#1B494E]/10 text-slate-500 group-hover:text-[#1B494E] flex items-center justify-center transition-colors">
-                          <UploadCloud size={16} />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-700 group-hover:text-[#1B494E]">
-                            Upload Photo #{idx + 1} for this brief
-                          </div>
-                          <div className="text-[10px] text-slate-400">
-                            Required to prevent blank flyer image · Click or drop JPG, PNG, WEBP
-                          </div>
-                        </div>
-                      </div>
-
-                      <span className="text-xs font-bold text-[#F26522] group-hover:underline shrink-0">
-                        + Select Image
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        {/* Dynamic Brief Textareas */}
+        <div className="space-y-3.5">
+          {briefs.map((brief, idx) => (
+            <div key={idx} className="relative group">
+              <textarea
+                value={brief}
+                onChange={(e) => handleBriefChange(idx, e.target.value)}
+                rows={idx === 0 ? 5 : 4}
+                placeholder={
+                  idx === 0
+                    ? "Paste a whatsapp message, notes or brief in its unedited form. We will extract the necessary details for your design template. Something like 2 bedroom apartment in VGC, Lekki..."
+                    : `Paste brief ${idx + 1}...`
+                }
+                className="w-full p-4 rounded-xl bg-[#E6EEEE]/60 border border-slate-300/70 text-slate-800 text-sm placeholder:text-slate-500/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/30 focus:border-[#1B494E] transition-all resize-y"
+              />
+              {briefs.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveBrief(idx)}
+                  className="absolute top-3 right-3 p-1.5 rounded-md bg-white/80 hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors shadow-xs cursor-pointer"
+                  title="Remove this brief"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Orange "+ Add another brief" Button (Figma screens 2 & 3) */}
@@ -588,7 +402,7 @@ export function NewPropertyView({
                     {/* Image Number Tag & Primary Indicator */}
                     <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
                       <div className="bg-black/65 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
-                        Photo #{idx + 1} · Brief #{idx + 1}
+                        Photo #{idx + 1}
                       </div>
                       {isPrimary ? (
                         <div className="bg-[#F26522] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
@@ -624,26 +438,8 @@ export function NewPropertyView({
                 );
               })}
 
-              {/* Missing Slot Indicators (up to 3 max) */}
-              {Array.from({
-                length: Math.min(3 - images.length, Math.max(0, briefs.length - images.length)),
-              }).map((_, i) => {
-                const slotNum = images.length + i + 1;
-                return (
-                  <div
-                    key={`missing-${slotNum}`}
-                    onClick={() => triggerSlotUpload(slotNum - 1)}
-                    className="h-32 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 flex flex-col items-center justify-center text-amber-800 transition-colors p-2 text-center cursor-pointer group"
-                  >
-                    <UploadCloud size={20} className="mb-1 text-amber-500 group-hover:scale-110 transition-transform" />
-                    <span className="text-xs font-bold">Photo #{slotNum} Required</span>
-                    <span className="text-[10px] text-amber-600 font-medium mt-0.5">For Brief #{slotNum}</span>
-                  </div>
-                );
-              })}
-
-              {/* Add Photo Button Tile (shown if less than 3 images and briefs need more) */}
-              {images.length < 3 && images.length < briefs.length && (
+              {/* Add Photo Button Tile (shown if less than 3 images) */}
+              {images.length < 3 && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -665,18 +461,6 @@ export function NewPropertyView({
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={(e) => handleImageFiles(e.target.files)}
-        />
-
-        <input
-          ref={slotFileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => {
-            if (activeUploadSlot !== null && e.target.files && e.target.files.length > 0) {
-              handleSlotImageFile(activeUploadSlot, e.target.files);
-            }
-          }}
         />
       </div>
 
