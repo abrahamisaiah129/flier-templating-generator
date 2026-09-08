@@ -149,6 +149,13 @@ export function NewPropertyView({
   const handleRemoveBrief = (index: number) => {
     if (briefs.length > 1) {
       setBriefs((prev) => prev.filter((_, i) => i !== index));
+      setImages((prev) => {
+        const next = prev.filter((_, i) => i !== index);
+        if (primaryId && !next.some((img) => img.id === primaryId)) {
+          setPrimaryId(next[0]?.id || null);
+        }
+        return next;
+      });
     }
   };
 
@@ -163,19 +170,32 @@ export function NewPropertyView({
       return;
     }
 
-    const MAX_ALLOWED = 3;
-    if (images.length >= MAX_ALLOWED) {
-      setLocalError(
-        "A maximum of 3 images can be uploaded at once. Please delete an image first if you wish to upload another."
-      );
+    // Strictly enforce 1 image per brief (cannot upload 2 or 3 images for just 1 brief)
+    const maxAllowed = Math.min(3, briefs.length);
+    if (images.length >= maxAllowed) {
+      if (briefs.length === 1) {
+        setLocalError(
+          "You cannot upload 2 or 3 images for just 1 brief. Please add another brief below first to attach Photo #2."
+        );
+      } else {
+        setLocalError(
+          `You currently have ${briefs.length} briefs, so a maximum of ${briefs.length} images can be uploaded (1 per brief). Add another brief to upload more.`
+        );
+      }
       return;
     }
 
-    const remainingSlots = Math.max(0, MAX_ALLOWED - images.length);
+    const remainingSlots = Math.max(0, maxAllowed - images.length);
     if (allowed.length > remainingSlots) {
-      setLocalError(
-        `A maximum of 3 images can be uploaded. Only ${remainingSlots} more image(s) could be added.`
-      );
+      if (briefs.length === 1) {
+        setLocalError(
+          "You cannot upload 2 or 3 images for just 1 brief. Only 1 image was attached for Brief #1. Click '+ Add another brief' to attach Photo #2."
+        );
+      } else {
+        setLocalError(
+          `Only ${remainingSlots} more brief image(s) could be added to match your ${briefs.length} briefs (1 image per brief).`
+        );
+      }
     } else {
       setLocalError(null);
     }
@@ -192,7 +212,7 @@ export function NewPropertyView({
     }
 
     setImages((prev) => {
-      const updated = [...prev, ...newImgs].slice(0, MAX_ALLOWED);
+      const updated = [...prev, ...newImgs].slice(0, maxAllowed);
       if (!primaryId && updated.length > 0) {
         setPrimaryId(updated[0].id);
       }
@@ -222,7 +242,15 @@ export function NewPropertyView({
     }
 
     if (images.length === 0) {
-      setLocalError("Please upload at least 1 property image.");
+      setLocalError("Please upload Image #1 for Brief #1.");
+      return;
+    }
+
+    const filledBriefsCount = briefs.filter((b) => b.trim().length > 0).length;
+    if (images.length < filledBriefsCount) {
+      setLocalError(
+        `You have ${filledBriefsCount} briefs but only ${images.length} image(s) uploaded. Please upload Image #${images.length + 1} for Brief #${images.length + 1} (each brief requires 1 image).`
+      );
       return;
     }
 
@@ -275,27 +303,41 @@ export function NewPropertyView({
         <div className="space-y-3.5">
           {briefs.map((brief, idx) => (
             <div key={idx} className="relative group">
+              {briefs.length > 1 && (
+                <div className="flex items-center justify-between mb-1.5 px-1">
+                  <span className="text-xs font-bold text-[#1B494E] flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-[#1B494E] text-white text-[10px] font-black flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <span>Brief #{idx + 1}</span>
+                    <span className="text-[10px] font-semibold text-[#F26522]">
+                      (Paired with Image #{idx + 1})
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveBrief(idx)}
+                    className="text-xs font-semibold text-slate-400 hover:text-red-600 flex items-center gap-1 cursor-pointer"
+                    title={`Remove brief #${idx + 1}`}
+                  >
+                    <X size={13} />
+                    <span>Remove</span>
+                  </button>
+                </div>
+              )}
               <textarea
                 value={brief}
                 onChange={(e) => handleBriefChange(idx, e.target.value)}
                 rows={idx === 0 ? 5 : 4}
                 placeholder={
                   idx === 0
-                    ? "Paste a whatsapp message, notes or brief in its unedited form. We will extract the necessary details for your design template. Something like 2 bedroom apartment in VGC, Lekki..."
-                    : `Paste brief ${idx + 1}...`
+                    ? briefs.length > 1
+                      ? "Paste brief #1 (paired with Image #1)..."
+                      : "Paste a whatsapp message, notes or brief in its unedited form. We will extract the necessary details for your design template. Something like 2 bedroom apartment in VGC, Lekki..."
+                    : `Paste brief #${idx + 1} (paired with Image #${idx + 1})...`
                 }
                 className="w-full p-4 rounded-xl bg-[#E6EEEE]/60 border border-slate-300/70 text-slate-800 text-sm placeholder:text-slate-500/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/30 focus:border-[#1B494E] transition-all resize-y"
               />
-              {briefs.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveBrief(idx)}
-                  className="absolute top-3 right-3 p-1.5 rounded-md bg-white/80 hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors shadow-xs cursor-pointer"
-                  title="Remove this brief"
-                >
-                  <X size={15} />
-                </button>
-              )}
             </div>
           ))}
         </div>
@@ -321,13 +363,11 @@ export function NewPropertyView({
               Upload Property Image
             </label>
             <span className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
-              Max 3 images
+              {briefs.length === 1 ? "1 image (1 brief added)" : `Max ${briefs.length} images (1 per brief)`}
             </span>
           </div>
           <span className="text-xs font-semibold text-slate-500">
-            {images.length > 0
-              ? `${images.length} / 3 uploaded`
-              : "JPG, PNG, or WEBP (Max 3)"}
+            {images.length} / {briefs.length} brief {briefs.length === 1 ? "image" : "images"} uploaded
           </span>
         </div>
 
@@ -346,10 +386,14 @@ export function NewPropertyView({
               <UploadCloud size={24} />
             </div>
             <p className="text-sm font-semibold text-slate-700 group-hover:text-[#1B494E]">
-              Drag & drop property images here, or click to browse
+              {briefs.length === 1
+                ? "Drag & drop Image #1 for Brief #1, or click to browse"
+                : `Drag & drop up to ${briefs.length} images (1 per brief), or click to browse`}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Supports JPG, PNG, or WEBP (Maximum 3 images)
+              {briefs.length === 1
+                ? "1 brief active · Exactly 1 image allowed (JPG, PNG, or WEBP)"
+                : `${briefs.length} briefs active · Exactly ${briefs.length} images allowed (1 for each brief)`}
             </p>
           </div>
         ) : (
@@ -363,21 +407,23 @@ export function NewPropertyView({
                 </div>
                 <div>
                   <span className="font-bold text-sm tracking-wide block">
-                    {images.length === 1 ? "1 / 3 image uploaded" : `${images.length} / 3 images uploaded`}
+                    {images.length} / {briefs.length} brief {briefs.length === 1 ? "image" : "images"} uploaded
                   </span>
                   <span className="text-xs text-teal-100/80 font-medium block">
-                    {images.length >= 3 ? "Maximum 3 images reached · Ready to generate flyers" : "Ready to generate flyer"}
+                    {images.length >= briefs.length
+                      ? `All ${briefs.length} brief ${briefs.length === 1 ? "photo" : "photos"} attached (1 per brief)`
+                      : `Upload ${briefs.length - images.length} more photo for Brief #${images.length + 1}`}
                   </span>
                 </div>
               </div>
-              {images.length < 3 && (
+              {images.length < briefs.length && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="text-xs font-bold px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg border border-white/20 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <Plus size={13} />
-                  <span>Add More</span>
+                  <span>Add Photo #{images.length + 1}</span>
                 </button>
               )}
             </div>
@@ -399,10 +445,13 @@ export function NewPropertyView({
                       className="w-full h-32 object-cover block"
                     />
 
-                    {/* Image Number Tag & Primary Indicator */}
+                    {/* Image Number Tag & Primary Indicator: Marked 1, 2, 3 for each brief */}
                     <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
-                      <div className="bg-black/65 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
-                        Photo #{idx + 1}
+                      <div className="bg-[#1B494E]/90 backdrop-blur-xs text-white text-[11px] font-extrabold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1.5 border border-white/20">
+                        <span className="w-4 h-4 rounded-full bg-[#F26522] text-white text-[10px] flex items-center justify-center font-black">
+                          {idx + 1}
+                        </span>
+                        <span>Brief #{idx + 1}</span>
                       </div>
                       {isPrimary ? (
                         <div className="bg-[#F26522] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
@@ -431,25 +480,43 @@ export function NewPropertyView({
                       <Trash2 size={12} />
                     </button>
 
-                    <div className="p-1.5 bg-white text-[11px] text-slate-600 truncate">
-                      {img.name}
+                    <div className="p-2 bg-white flex flex-col gap-0.5 border-t border-slate-100">
+                      <div className="text-[11px] font-bold text-slate-800 truncate">
+                        {img.name}
+                      </div>
+                      <div className="text-[10px] text-[#F26522] font-extrabold flex items-center gap-1">
+                        <span>Image #{idx + 1}</span>
+                        <span className="text-slate-400">·</span>
+                        <span className="text-[#1B494E]">Brief #{idx + 1}</span>
+                      </div>
                     </div>
                   </div>
                 );
               })}
 
-              {/* Add Photo Button Tile (shown if less than 3 images) */}
-              {images.length < 3 && (
+              {/* Add Photo Button Tile (shown if less images than briefs) */}
+              {images.length < briefs.length ? (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="h-32 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1B494E] bg-slate-50/50 hover:bg-slate-50 flex flex-col items-center justify-center text-slate-500 hover:text-[#1B494E] transition-colors p-2 text-center cursor-pointer group"
                 >
                   <Plus size={22} className="mb-1 text-slate-400 group-hover:text-[#1B494E] group-hover:scale-110 transition-transform duration-150" />
-                  <span className="text-xs font-bold text-slate-700">Add Photo</span>
-                  <span className="text-[10px] text-slate-400 font-medium mt-0.5">{3 - images.length} remaining</span>
+                  <span className="text-xs font-bold text-slate-700">Add Photo #{images.length + 1}</span>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5">For Brief #{images.length + 1}</span>
                 </button>
-              )}
+              ) : briefs.length < 3 ? (
+                <button
+                  type="button"
+                  onClick={handleAddBrief}
+                  className="h-32 rounded-xl border-2 border-dashed border-orange-200 hover:border-[#F26522] bg-orange-50/30 hover:bg-orange-50/60 flex flex-col items-center justify-center text-[#F26522] transition-colors p-2 text-center cursor-pointer group"
+                  title="Add another brief to attach another image"
+                >
+                  <Plus size={22} className="mb-1 text-[#F26522] group-hover:scale-110 transition-transform duration-150" />
+                  <span className="text-xs font-bold text-slate-700">+ Add Brief #{briefs.length + 1}</span>
+                  <span className="text-[10px] text-slate-500 font-medium mt-0.5">To upload Photo #{briefs.length + 1}</span>
+                </button>
+              ) : null}
             </div>
           </div>
         )}
@@ -457,7 +524,7 @@ export function NewPropertyView({
         <input
           ref={fileInputRef}
           type="file"
-          multiple
+          multiple={briefs.length > 1}
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={(e) => handleImageFiles(e.target.files)}
