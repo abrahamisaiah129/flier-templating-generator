@@ -291,11 +291,6 @@ export function NewPropertyView({
             <h3 className="font-bold text-[#1B494E] text-base leading-none">
               Source brief
             </h3>
-            {briefs.length > 1 && (
-              <p className="text-xs text-[#F26522] font-medium mt-1">
-                (You can paste up to three property briefs at once)
-              </p>
-            )}
           </div>
         </div>
 
