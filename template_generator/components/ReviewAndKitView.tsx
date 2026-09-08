@@ -11,7 +11,6 @@ import {
   Loader2,
   CheckCircle2,
   Layers,
-  Layout,
   FolderArchive,
   Eye,
   Images,
@@ -19,10 +18,10 @@ import {
   Upload,
 } from "lucide-react";
 import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
-import { FlyerCanvas, svgToPngBlob, getTemplateImageSlots, FlierImageSlot } from "./FlyerCanvas";
-import { EMPTY_FIELD, TEMPLATES_CONFIG } from "../utils/constants";
+import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
+import { EMPTY_FIELD } from "../utils/constants";
 import { generateCaption } from "../utils/extractor";
-import { getStoredCustomTemplates, deleteStoredCustomTemplate } from "../utils/storage";
+import { getStoredCustomTemplates } from "../utils/storage";
 
 interface ReviewAndKitViewProps {
   initialStep: "review" | "kit";
@@ -64,58 +63,7 @@ export function ReviewAndKitView({
   const [customTemplates, setCustomTemplates] = useState<CustomTemplateItem[]>(() =>
     typeof window !== "undefined" ? getStoredCustomTemplates() : []
   );
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(
-    initialTemplateId || "bmi"
-  );
-  const [selectedCategories, setSelectedCategories] = useState<Set<"official" | "custom">>(
-    new Set(["official", "custom"])
-  );
-
-  const toggleCategory = (cat: "official" | "custom") => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) {
-        if (next.size === 1) {
-          const other = cat === "official" ? "custom" : "official";
-          return new Set([other]);
-        }
-        next.delete(cat);
-      } else {
-        next.add(cat);
-      }
-      return next;
-    });
-  };
-
-  const officialTemplates = TEMPLATES_CONFIG.map((t) => ({ ...t, isCustom: false }));
-  const userTemplates = customTemplates.map((c) => ({
-    id: c.id,
-    name: c.name,
-    badge: c.badge || "Custom",
-    themeColor: c.themeColor,
-    accentColor: c.accentColor,
-    description: c.description,
-    isCustom: true,
-    svgMarkup: c.svgMarkup,
-  }));
-
-  const allAvailableTemplates = [...officialTemplates, ...userTemplates];
-
-  const displayedTemplates = [
-    ...(selectedCategories.has("official") ? officialTemplates : []),
-    ...(selectedCategories.has("custom") ? userTemplates : []),
-  ];
-
-  const handleDeleteCustomTemplate = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (typeof window !== "undefined" && confirm("Are you sure you want to delete this custom template?")) {
-      deleteStoredCustomTemplate(id);
-      setCustomTemplates(getStoredCustomTemplates());
-      if (selectedTemplate === id) {
-        setSelectedTemplate("bmi");
-      }
-    }
-  };
+  const selectedTemplate: TemplateId = initialTemplateId || "bmi";
 
   const currentSelectedCustomTemplate = customTemplates.find(
     (t) => t.id === selectedTemplate
@@ -156,9 +104,6 @@ export function ReviewAndKitView({
       ? localImages[safeActiveIndex]?.url || null
       : localImages.find((img) => img.id === primaryId)?.url || null;
 
-  const currentTemplateImageSlots: FlierImageSlot[] = useMemo(() => {
-    return getTemplateImageSlots(selectedTemplate);
-  }, [selectedTemplate]);
 
   const handleSelectCanvasItem = (itemId: string | null, itemType: "text" | "image") => {
     setSelectedCanvasItemId(itemId);
@@ -650,108 +595,6 @@ export function ReviewAndKitView({
           {/* STEP 1: REVIEW FIELDS */}
           {step === "review" && (
             <>
-              {/* Indexed Flyer Photo Slots Manager */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3.5">
-                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <Images size={16} className="text-[#1B494E]" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-[#1B494E]">
-                      Flyer Photo Slots ({currentTemplateImageSlots.length} Containers)
-                    </h3>
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    Click container to inspect or upload image
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {currentTemplateImageSlots.map((slot) => {
-                    const isSelected = selectedCanvasItemId === slot.id;
-                    let slotImgUrl: string | null = null;
-                    if (slot.id === "image-primary") {
-                      slotImgUrl = currentActiveImage;
-                    } else if (slot.id === "image-secondary-0") {
-                      slotImgUrl = localImages.filter((_, idx) => idx !== safeActiveIndex)[0]?.url || null;
-                    } else if (slot.id === "image-secondary-1") {
-                      slotImgUrl = localImages.filter((_, idx) => idx !== safeActiveIndex)[1]?.url || null;
-                    } else if (slot.id === "logo") {
-                      slotImgUrl = customLogoUrl || settings.logoUrl || null;
-                    }
-
-                    return (
-                      <div
-                        key={slot.id}
-                        onClick={() => handleSelectCanvasItem(slot.id, "image")}
-                        className={`p-3 rounded-xl border bg-slate-50/70 hover:bg-slate-50 transition-all cursor-pointer ${
-                          isSelected
-                            ? "border-[#F26522] ring-2 ring-orange-500/30 shadow-xs bg-orange-50/20"
-                            : "border-slate-200"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          {slotImgUrl ? (
-                            <img
-                              src={slotImgUrl}
-                              alt={slot.label}
-                              className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0 bg-white"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg border-2 border-dashed border-slate-300 bg-white flex items-center justify-center text-slate-400 shrink-0">
-                              <Upload size={16} />
-                            </div>
-                          )}
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-bold text-slate-800 truncate">
-                                {slot.label}
-                              </span>
-                              {slot.isCover && (
-                                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-orange-100 text-[#F26522]">
-                                  COVER
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                              ID: {slot.id}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-2.5 pt-2 border-t border-slate-200/70 flex items-center justify-between gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setImageUploadTargetSlot(slot.id);
-                              fileInputRef.current?.click();
-                            }}
-                            className="px-3 py-1 rounded-lg bg-[#1B494E] hover:bg-[#14383C] text-white text-[11px] font-bold flex items-center gap-1.5 transition-transform duration-120 cursor-pointer active:scale-95"
-                          >
-                            <Upload size={11} />
-                            <span>{slotImgUrl ? "Change Photo" : "Upload Photo"}</span>
-                          </button>
-
-                          {slotImgUrl && (slot.id === "image-secondary-0" || slot.id === "image-secondary-1") && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveSecondarySlot(slot.id);
-                              }}
-                              className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                              title="Clear photo in this container"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Property Specifications */}
               <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
               <h3 className="text-xs font-black uppercase tracking-wider text-[#1B494E] pb-3 border-b border-slate-100">
@@ -1217,118 +1060,6 @@ export function ReviewAndKitView({
             </span>
           </div>
 
-          {/* Template Selection Switcher (Official + Saved Custom Templates) */}
-          <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-1.5">
-                <Layout size={14} className="text-[#1B494E]" />
-                <span className="text-[11px] font-black uppercase tracking-wider text-[#1B494E]">
-                  Choose Flyer Template
-                </span>
-              </div>
-
-              {/* Option Tags for Official and Custom */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => toggleCategory("official")}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-150 cursor-pointer flex items-center gap-1 border shadow-2xs ${
-                    selectedCategories.has("official")
-                      ? "bg-[#1B494E] text-white border-[#1B494E]"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                  }`}
-                >
-                  <span>Official</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[9px] font-extrabold ${
-                      selectedCategories.has("official")
-                        ? "bg-white/20 text-white"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {officialTemplates.length}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => toggleCategory("custom")}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-150 cursor-pointer flex items-center gap-1 border shadow-2xs ${
-                    selectedCategories.has("custom")
-                      ? "bg-[#1B494E] text-white border-[#1B494E]"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                  }`}
-                >
-                  <span>Custom</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[9px] font-extrabold ${
-                      selectedCategories.has("custom")
-                        ? "bg-white/20 text-white"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {userTemplates.length}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className={`grid ${displayedTemplates.length > 3 ? "grid-cols-2 sm:grid-cols-3 max-h-[280px] overflow-y-auto pr-1" : "grid-cols-3"} gap-2`}>
-              {displayedTemplates.map((tmpl) => {
-                const isSelected = selectedTemplate === tmpl.id;
-                return (
-                  <div
-                    key={tmpl.id}
-                    onClick={() => setSelectedTemplate(tmpl.id)}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-transform duration-120 active:scale-[0.98] relative group ${
-                      isSelected
-                        ? "border-[#1B494E] bg-[#1B494E]/5 ring-2 ring-[#1B494E]/20 shadow-xs"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{
-                          backgroundColor:
-                            tmpl.accentColor === "#FFFFFF"
-                              ? tmpl.themeColor
-                              : tmpl.accentColor,
-                        }}
-                      />
-                      <div className="flex items-center gap-1">
-                        {tmpl.badge ? (
-                          <span className={`text-[9px] font-extrabold uppercase px-1 py-0.2 rounded ${
-                            tmpl.isCustom ? "bg-orange-100 text-[#F26522]" : "bg-slate-100 text-slate-600"
-                          }`}>
-                            {tmpl.badge}
-                          </span>
-                        ) : null}
-                        {tmpl.isCustom && (
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteCustomTemplate(e, tmpl.id)}
-                            title="Delete custom template"
-                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-xs font-extrabold text-[#1B494E] truncate">
-                      {tmpl.name}
-                    </div>
-                    {tmpl.description ? (
-                      <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
-                        {tmpl.description}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
 
           {/* Multi-Image Flyer Pager Bar (Shown when localImages.length > 1) */}
           {localImages.length > 1 && (
@@ -1464,6 +1195,18 @@ export function ReviewAndKitView({
                           </button>
                         ))}
                       </div>
+                    )}
+
+                    {(selectedCanvasItemId === "image-secondary-0" || selectedCanvasItemId === "image-secondary-1") && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSecondarySlot(selectedCanvasItemId)}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                        title="Clear photo from this container"
+                      >
+                        <Trash2 size={12} />
+                        <span>Clear</span>
+                      </button>
                     )}
                   </div>
                 )}
