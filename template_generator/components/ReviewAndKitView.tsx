@@ -26,6 +26,7 @@ import { getStoredCustomTemplates } from "../utils/storage";
 interface ReviewAndKitViewProps {
   initialStep: "review" | "kit";
   initialData: PropertyData;
+  initialDataList?: PropertyData[];
   images: UploadedImage[];
   primaryId: string | null;
   settings: AppSettings;
@@ -46,6 +47,7 @@ function uid(): string {
 export function ReviewAndKitView({
   initialStep,
   initialData,
+  initialDataList,
   images,
   primaryId,
   settings,
@@ -59,7 +61,20 @@ export function ReviewAndKitView({
   onDone,
 }: ReviewAndKitViewProps) {
   const [step, setStep] = useState<"review" | "kit">(initialStep);
-  const [data, setData] = useState<PropertyData>(initialData);
+  const [propertiesData, setPropertiesData] = useState<PropertyData[]>(() => {
+    if (initialDataList && initialDataList.length > 0) {
+      return initialDataList;
+    }
+    return [initialData];
+  });
+  const [activePropertyIndex, setActivePropertyIndex] = useState<number>(0);
+
+  const safePropIndex = Math.min(
+    Math.max(0, activePropertyIndex),
+    propertiesData.length - 1
+  );
+
+  const data = propertiesData[safePropIndex] || initialData;
   const [customTemplates, setCustomTemplates] = useState<CustomTemplateItem[]>(() =>
     typeof window !== "undefined" ? getStoredCustomTemplates() : []
   );
@@ -68,9 +83,21 @@ export function ReviewAndKitView({
   const currentSelectedCustomTemplate = customTemplates.find(
     (t) => t.id === selectedTemplate
   );
-  const [caption, setCaption] = useState<string>(
-    existingCaption || generateCaption(initialData, settings.captionTemplate, settings)
-  );
+  const [captions, setCaptions] = useState<string[]>(() => {
+    const list = initialDataList && initialDataList.length > 0 ? initialDataList : [initialData];
+    return list.map((item, idx) => {
+      if (idx === 0 && existingCaption) return existingCaption;
+      return generateCaption(item, settings.captionTemplate, settings);
+    });
+  });
+  const caption = captions[safePropIndex] || "";
+  const setCaption = (newCap: string) => {
+    setCaptions((prev) => {
+      const next = [...prev];
+      next[safePropIndex] = newCap;
+      return next;
+    });
+  };
   const [localImages, setLocalImages] = useState<UploadedImage[]>(images);
   const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(settings.logoUrl || null);
   const [selectedCanvasItemId, setSelectedCanvasItemId] = useState<string | null>(null);
@@ -104,6 +131,19 @@ export function ReviewAndKitView({
       ? localImages[safeActiveIndex]?.url || null
       : localImages.find((img) => img.id === primaryId)?.url || null;
 
+  const handleSelectPropertyTab = (index: number) => {
+    setActivePropertyIndex(index);
+    setActiveImageIndex(index);
+    setSelectedCanvasItemId(null);
+    setSelectedCanvasItemType(null);
+  };
+
+  const handleSelectImageIndex = (index: number) => {
+    setActiveImageIndex(index);
+    if (index < propertiesData.length) {
+      setActivePropertyIndex(index);
+    }
+  };
 
   const handleSelectCanvasItem = (itemId: string | null, itemType: "text" | "image") => {
     setSelectedCanvasItemId(itemId);
@@ -376,8 +416,12 @@ export function ReviewAndKitView({
   };
 
   const updateField = <K extends keyof PropertyData>(key: K, value: PropertyData[K]) => {
-    setData((prev) => {
-      const updated = { ...prev, [key]: value };
+    setPropertiesData((prev) => {
+      const next = [...prev];
+      const current = next[safePropIndex] || initialData;
+      const updated = { ...current, [key]: value };
+      next[safePropIndex] = updated;
+
       if (
         key === "bedrooms" ||
         key === "propertyType" ||
@@ -385,9 +429,13 @@ export function ReviewAndKitView({
         key === "priceNGN" ||
         key === "documentation"
       ) {
-        setCaption(generateCaption(updated, settings.captionTemplate, settings));
+        setCaptions((prevCaps) => {
+          const nextCaps = [...prevCaps];
+          nextCaps[safePropIndex] = generateCaption(updated, settings.captionTemplate, settings);
+          return nextCaps;
+        });
       }
-      return updated;
+      return next;
     });
   };
 
@@ -431,7 +479,8 @@ export function ReviewAndKitView({
       a.href = url;
       const scaleSuffix = exportScale > 1 ? `@${exportScale}x-HD` : "";
       const outputSuffix = localImages.length > 1 ? `-flyer-${targetIndex + 1}` : "";
-      a.download = `${(data.propertyTitle || "property-flyer")
+      const targetProp = propertiesData[targetIndex] || data;
+      a.download = `${(targetProp.propertyTitle || "property-flyer")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")}${outputSuffix}-${selectedTemplate}${scaleSuffix}.png`;
       a.click();
@@ -451,12 +500,17 @@ export function ReviewAndKitView({
       const JSZipModule = await import("jszip");
       const JSZip = JSZipModule.default;
       const zip = new JSZip();
-      const titleSlug = (data.propertyTitle || "property-flyer")
+      const primaryProp = propertiesData[0] || data;
+      const titleSlug = (primaryProp.propertyTitle || "property-flyer")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-");
 
       for (let i = 0; i < localImages.length; i++) {
         setBatchProgress(`Rendering flyer ${i + 1} of ${localImages.length}...`);
+        const targetProp = propertiesData[i] || propertiesData[0] || data;
+        const targetTitleSlug = (targetProp.propertyTitle || "property-flyer")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-");
         const svgEl =
           i === safeActiveIndex && svgRef.current
             ? svgRef.current
@@ -465,7 +519,7 @@ export function ReviewAndKitView({
           const blob = await svgToPngBlob(svgEl, exportScale);
           if (blob) {
             const scaleSuffix = exportScale > 1 ? `@${exportScale}x-HD` : "";
-            const filename = `${titleSlug}-flyer-${i + 1}-${selectedTemplate}${scaleSuffix}.png`;
+            const filename = `${targetTitleSlug}-flyer-${i + 1}-${selectedTemplate}${scaleSuffix}.png`;
             zip.file(filename, blob);
           }
         }
@@ -495,12 +549,12 @@ export function ReviewAndKitView({
     if (localImages.length === 0) return;
     setBatchDownloading(true);
     try {
-      const titleSlug = (data.propertyTitle || "property-flyer")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-");
-
       for (let i = 0; i < localImages.length; i++) {
         setBatchProgress(`Downloading flyer ${i + 1} of ${localImages.length}...`);
+        const targetProp = propertiesData[i] || propertiesData[0] || data;
+        const targetTitleSlug = (targetProp.propertyTitle || "property-flyer")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-");
         const svgEl =
           i === safeActiveIndex && svgRef.current
             ? svgRef.current
@@ -512,7 +566,7 @@ export function ReviewAndKitView({
             const a = document.createElement("a");
             a.href = url;
             const scaleSuffix = exportScale > 1 ? `@${exportScale}x-HD` : "";
-            a.download = `${titleSlug}-flyer-${i + 1}-${selectedTemplate}${scaleSuffix}.png`;
+            a.download = `${targetTitleSlug}-flyer-${i + 1}-${selectedTemplate}${scaleSuffix}.png`;
             a.click();
             URL.revokeObjectURL(url);
             await new Promise((r) => setTimeout(r, 450));
@@ -588,6 +642,60 @@ export function ReviewAndKitView({
           </button>
         )}
       </div>
+
+      {/* Multi-Property Tabs Bar (Shown when 2 or more properties exist) */}
+      {propertiesData.length > 1 && (
+        <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200/90 shadow-xs mb-6">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-black uppercase tracking-wider text-[#1B494E] px-1">
+                Select Property:
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {propertiesData.map((prop, pIdx) => {
+                  const isActive = safePropIndex === pIdx;
+                  return (
+                    <button
+                      key={pIdx}
+                      type="button"
+                      onClick={() => handleSelectPropertyTab(pIdx)}
+                      className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all duration-150 cursor-pointer ${
+                        isActive
+                          ? "bg-[#1B494E] text-white shadow-sm ring-2 ring-[#1B494E]/20"
+                          : "bg-slate-100 hover:bg-slate-200/80 text-slate-700"
+                      }`}
+                    >
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                          isActive
+                            ? "bg-[#F26522] text-white"
+                            : "bg-slate-200 text-slate-700"
+                        }`}
+                      >
+                        {pIdx + 1}
+                      </span>
+                      <span>Property {pIdx + 1}</span>
+                      {prop.propertyTitle && (
+                        <span
+                          className={`text-[11px] font-medium truncate max-w-[140px] hidden sm:inline ${
+                            isActive ? "text-teal-200" : "text-slate-500"
+                          }`}
+                        >
+                          · {prop.propertyTitle}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="text-[11px] font-semibold text-slate-500 px-1 hidden md:block">
+              Select tab to update specifications & flyer preview for each property
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN: Controls or Kit Details */}
@@ -978,7 +1086,7 @@ export function ReviewAndKitView({
                           <div className="space-y-1.5">
                             <button
                               type="button"
-                              onClick={() => setActiveImageIndex(idx)}
+                              onClick={() => handleSelectImageIndex(idx)}
                               className={`w-full py-1.5 rounded-md text-[11px] font-bold flex items-center justify-center gap-1 transition-transform duration-120 cursor-pointer active:scale-[0.98] ${
                                 isCurrent
                                   ? "bg-[#1B494E] text-white"
@@ -1082,7 +1190,7 @@ export function ReviewAndKitView({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setActiveImageIndex((prev) => Math.max(0, prev - 1))}
+                    onClick={() => handleSelectImageIndex(Math.max(0, safeActiveIndex - 1))}
                     disabled={safeActiveIndex === 0}
                     className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-transform duration-120 active:scale-[0.98] cursor-pointer"
                     title="Previous flyer"
@@ -1091,7 +1199,7 @@ export function ReviewAndKitView({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveImageIndex((prev) => Math.min(localImages.length - 1, prev + 1))}
+                    onClick={() => handleSelectImageIndex(Math.min(localImages.length - 1, safeActiveIndex + 1))}
                     disabled={safeActiveIndex === localImages.length - 1}
                     className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-transform duration-120 active:scale-[0.98] cursor-pointer"
                     title="Next flyer"
@@ -1109,7 +1217,7 @@ export function ReviewAndKitView({
                     <button
                       key={img.id || idx}
                       type="button"
-                      onClick={() => setActiveImageIndex(idx)}
+                      onClick={() => handleSelectImageIndex(idx)}
                       className={`relative flex-shrink-0 w-12 h-14 rounded-lg overflow-hidden border-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] ${
                         isActive
                           ? "border-[#F26522] ring-2 ring-orange-500/30 scale-105 shadow-xs"
@@ -1310,7 +1418,7 @@ export function ReviewAndKitView({
             }}
           >
             <FlyerCanvas
-              data={data}
+              data={propertiesData[idx] || data}
               settings={effectiveSettings}
               primaryImage={img.url}
               secondaryImages={

@@ -42,9 +42,10 @@ export default function Home() {
 
   // State for active property being created or viewed
   const [currentReviewData, setCurrentReviewData] = useState<PropertyData | null>(null);
+  const [currentReviewDataList, setCurrentReviewDataList] = useState<PropertyData[]>([]);
   const [currentImages, setCurrentImages] = useState<UploadedImage[]>([]);
   const [currentPrimaryId, setCurrentPrimaryId] = useState<string | null>(null);
-  const [currentTemplateId, setCurrentTemplateId] = useState<TemplateId | undefined>("bmi");
+  const [currentTemplateId, setCurrentTemplateId] = useState<TemplateId>("bmi");
   const [currentBriefText, setCurrentBriefText] = useState<string>("");
   const [currentBriefUrl, setCurrentBriefUrl] = useState<string>("");
   const [existingId, setExistingId] = useState<string | undefined>(undefined);
@@ -68,15 +69,21 @@ export default function Home() {
       // Simulate rapid AI extraction polish
       await new Promise((r) => setTimeout(r, 600));
 
+      // Extract details for EACH brief individually
+      const nonBlankBriefs = briefs.filter((b) => b.trim().length > 0);
+      const targetBriefs = nonBlankBriefs.length > 0 ? nonBlankBriefs : briefs;
+      const dataList: PropertyData[] = targetBriefs.map((b) => extractDetailsLocally(b));
+
       // Combine briefs if multi-brief
       const combinedBriefText = briefs
         .map((b, i) => (briefs.length > 1 ? `[Brief ${i + 1}]\n${b}` : b))
         .filter((b) => b.trim().length > 0)
         .join("\n\n");
 
-      const extracted = extractDetailsLocally(combinedBriefText);
+      const primaryExtracted = dataList[0] || extractDetailsLocally(combinedBriefText);
 
-      setCurrentReviewData(extracted);
+      setCurrentReviewData(primaryExtracted);
+      setCurrentReviewDataList(dataList);
       setCurrentImages(images);
       setCurrentPrimaryId(images.length > 0 ? images[0].id : null);
       if (templateId) {
@@ -116,6 +123,7 @@ export default function Home() {
 
   const handleOpenProperty = (prop: PropertyItem) => {
     setCurrentReviewData(prop.data);
+    setCurrentReviewDataList([prop.data]);
     setCurrentImages(prop.images || []);
     setCurrentPrimaryId(prop.primaryId || prop.images?.[0]?.id || null);
     setCurrentTemplateId(prop.templateId || "bmi");
@@ -136,6 +144,7 @@ export default function Home() {
           setMobileMenuOpen(false);
           if (view === "new") {
             setCurrentReviewData(null);
+            setCurrentReviewDataList([]);
             setCurrentImages([]);
             setCurrentTemplateId("bmi");
             setExistingId(undefined);
@@ -198,6 +207,7 @@ export default function Home() {
             <ReviewAndKitView
               initialStep={activeView}
               initialData={currentReviewData}
+              initialDataList={currentReviewDataList}
               images={currentImages}
               primaryId={currentPrimaryId}
               settings={settings}
