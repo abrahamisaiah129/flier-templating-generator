@@ -11,7 +11,6 @@ import {
   Loader2,
   AlertCircle,
   X,
-  Link as LinkIcon,
   Layout,
   Palette,
 } from "lucide-react";
@@ -136,11 +135,6 @@ export function NewPropertyView({
   // Slot-based indexed image upload state
   const [activeUploadSlot, setActiveUploadSlot] = useState<number | null>(null);
   const slotFileInputRef = useRef<HTMLInputElement>(null);
-
-  // Brief URL extraction state
-  const [showBriefUrlDrawer, setShowBriefUrlDrawer] = useState(false);
-  const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
-  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
 
   const triggerSlotUpload = (idx: number) => {
     setActiveUploadSlot(idx);
@@ -275,50 +269,10 @@ export function NewPropertyView({
     setPrimaryId(id);
   };
 
-  const handleGenerateBriefWithAi = async () => {
-    if (!briefUrl.trim()) {
-      setLocalError("Please enter a property listing URL first.");
-      return;
-    }
-
-    setLocalError(null);
-    setAiSuccessMessage(null);
-    setIsGeneratingBrief(true);
-
-    try {
-      const res = await fetch("/api/extract-brief", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: briefUrl,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to generate brief.");
-      }
-
-      if (data.briefs && Array.isArray(data.briefs) && data.briefs.length > 0) {
-        setBriefs(data.briefs);
-        setAiSuccessMessage(
-          `Brief successfully generated from listing URL and loaded into Source Brief above.`
-        );
-      } else {
-        throw new Error("No brief could be generated. Please check your URL.");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to generate brief from listing URL.";
-      setLocalError(msg);
-    } finally {
-      setIsGeneratingBrief(false);
-    }
-  };
-
   const handleSubmit = async () => {
     const hasAnyText = briefs.some((b) => b.trim().length > 0);
-    if (!hasAnyText && !briefUrl.trim()) {
-      setLocalError("Please enter at least one property brief or provide a brief URL.");
+    if (!hasAnyText) {
+      setLocalError("Please enter at least one property brief.");
       return;
     }
 
@@ -542,86 +496,6 @@ export function NewPropertyView({
             <Plus size={16} />
             <span>+ Add another brief</span>
           </button>
-        )}
-      </div>
-
-      {/* Brief URL Extraction Tool */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs mb-6 transition-all">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-xs sm:text-sm font-medium text-slate-700">
-            Extract brief details automatically from an online listing URL.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowBriefUrlDrawer((prev) => !prev);
-              setLocalError(null);
-            }}
-            className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all duration-150 ease-out cursor-pointer ${
-              showBriefUrlDrawer
-                ? "bg-[#1B494E] text-white shadow-xs"
-                : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-            }`}
-          >
-            <LinkIcon size={14} />
-            <span>Brief URL</span>
-          </button>
-        </div>
-
-        {/* Brief URL Drawer */}
-        {showBriefUrlDrawer && (
-          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
-            <div className="relative">
-              <input
-                type="url"
-                value={briefUrl}
-                onChange={(e) => setBriefUrl(e.target.value)}
-                placeholder="https://... paste listing URL (PropertyPro, Nigeria Property Centre, etc.)"
-                className="w-full py-2.5 pl-4 pr-10 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20 focus:border-[#1B494E] transition-all"
-              />
-              <LinkIcon
-                size={16}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                disabled={isGeneratingBrief || !briefUrl.trim()}
-                onClick={handleGenerateBriefWithAi}
-                className="py-2 px-4 rounded-xl bg-[#1B494E] hover:bg-[#14383C] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs flex items-center gap-2 transition-transform duration-150 ease-out active:scale-[0.98] cursor-pointer"
-              >
-                {isGeneratingBrief ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Extracting from URL...</span>
-                  </>
-                ) : (
-                  <>
-                    <LinkIcon size={13} />
-                    <span>Generate Brief from URL</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* AI Success Notification */}
-        {aiSuccessMessage && (
-          <div className="mt-3 p-3 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 text-xs text-slate-800 font-medium">
-            <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-            <span className="flex-1">{aiSuccessMessage}</span>
-            <button
-              type="button"
-              onClick={() => setAiSuccessMessage(null)}
-              className="text-slate-500 hover:text-slate-800 cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          </div>
         )}
       </div>
 
