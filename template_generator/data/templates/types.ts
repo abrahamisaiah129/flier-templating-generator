@@ -45,6 +45,7 @@ export interface TemplateRenderProps {
   itemWrap?: Record<string, boolean>;
   itemAlign?: Record<string, "left" | "center" | "right">;
   itemFontSizes?: Record<string, number>;
+  itemScales?: Record<string, number>;
 }
 
 export interface TemplateDefinition {

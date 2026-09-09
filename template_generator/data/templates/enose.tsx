@@ -3,7 +3,7 @@
 import React from "react";
 import { TemplateDefinition, TemplateRenderProps, FlierItemBox, FlierImageSlot, FlierTextSlot } from "./types";
 import { ENOSE_LOGO_DATA_URL } from "../../utils/templateLogos";
-import { wrapSvgText } from "../../utils/textWrap";
+import { wrapSvgText, fitSvgText } from "../../utils/textWrap";
 
 const CANVAS_W = 1080;
 const CANVAS_H = 1350;
@@ -106,6 +106,7 @@ export function EnoseTemplate({
   itemWrap,
   itemAlign,
   itemFontSizes,
+  itemScales,
 }: TemplateRenderProps) {
   const getTransform = (id: string, base?: string) => {
     const off = itemOffsets?.[id];
@@ -124,10 +125,28 @@ export function EnoseTemplate({
   const locRaw = (data.location || "VICTORIA ISLAND, LAGOS").toUpperCase();
   const locWidth = itemWidths?.["location"] || 460;
   const isLocWrap = itemWrap?.["location"] !== false;
-  const enoseLocFontSize = itemFontSizes?.["location"] || (locRaw.length > 20 ? 46 : 56);
-  const locLines = isLocWrap ? wrapSvgText(locRaw, locWidth, enoseLocFontSize * 0.58) : [locRaw];
+  const locScale = itemScales?.["location"] || 1.0;
+  const baseLocFontSize = itemFontSizes?.["location"] || (locRaw.length > 20 ? 44 : 54);
 
-  const enosePriceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 8 ? 60 : 74);
+  const locFit = isLocWrap
+    ? fitSvgText(locRaw, locWidth, baseLocFontSize, {
+        scale: locScale,
+        maxLines: 3,
+        minFontSize: 16,
+        breakWords: true,
+      })
+    : {
+        lines: [locRaw],
+        fontSize: Math.max(16, Math.round(baseLocFontSize * locScale)),
+        lineHeight: Math.round(baseLocFontSize * locScale * 1.2),
+        totalHeight: Math.round(baseLocFontSize * locScale),
+      };
+  const locLines = locFit.lines;
+  const enoseLocFontSize = locFit.fontSize;
+
+  const priceScale = itemScales?.["priceNGN"] || 1.0;
+  const basePriceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 8 ? 60 : 74);
+  const enosePriceFontSize = Math.max(24, Math.round(basePriceFontSize * priceScale));
 
   return (
     <g>
@@ -273,6 +292,8 @@ export function EnoseTemplate({
           y="1128"
           textAnchor="middle"
           fontSize={enosePriceFontSize}
+          textLength={rawPriceNaira.length * (enosePriceFontSize * 0.58) > 350 ? 350 : undefined}
+          lengthAdjust={rawPriceNaira.length * (enosePriceFontSize * 0.58) > 350 ? "spacingAndGlyphs" : undefined}
           fontWeight="800"
           fill="#FFF5ED"
           letterSpacing="-0.5"
@@ -314,6 +335,8 @@ export function EnoseTemplate({
             x="525"
             y={locLines.length > 1 ? 1115 - (locLines.length - 1) * (enoseLocFontSize + 4) * 0.5 : 1115}
             fontSize={enoseLocFontSize}
+            textLength={!isLocWrap && locRaw.length * (enoseLocFontSize * 0.58) > locWidth ? locWidth : undefined}
+            lengthAdjust={!isLocWrap && locRaw.length * (enoseLocFontSize * 0.58) > locWidth ? "spacingAndGlyphs" : undefined}
             fontWeight="800"
             fill="#FFF5ED"
             letterSpacing="1"

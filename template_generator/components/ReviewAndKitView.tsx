@@ -1,72 +1,60 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
+import { ChevronLeft } from "lucide-react";
 import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Share2,
-  Copy,
-  Sparkles,
-  Loader2,
-  CheckCircle2,
-  Layers,
-  FolderArchive,
-  Eye,
-  Images,
-  Trash2,
-  Upload,
-  RotateCcw,
-  Move,
-  WrapText,
-  Type,
-  Minus,
-  Plus,
-} from "lucide-react";
-import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
-import { FlyerCanvas, svgToPngBlob, getTemplateItemBoxes } from "./FlyerCanvas";
-import { EMPTY_FIELD } from "../utils/constants";
-import { generateCaption } from "../utils/extractor";
+  PropertyData,
+  UploadedImage,
+  TemplateId,
+  AppSettings,
+  PropertyItem,
+  CustomTemplateItem,
+} from "../types/propkit";
 import { getStoredCustomTemplates } from "../utils/storage";
+import { generateCaption } from "../utils/extractor";
+import { svgToPngBlob } from "./canvas/FlyerCanvas";
+import { TemplateSelectorModal } from "./TemplateSelectorModal";
+import { PropertyReviewStep } from "./kit/PropertyReviewStep";
+import { MarketingKitStep } from "./kit/MarketingKitStep";
+import { BatchExportOffscreen } from "./kit/BatchExportOffscreen";
+import { useFlyerCustomization } from "../hooks/useFlyerCustomization";
 
-interface ReviewAndKitViewProps {
-  initialStep: "review" | "kit";
+export interface ReviewAndKitViewProps {
+  initialStep?: "review" | "kit";
   initialData: PropertyData;
   initialDataList?: PropertyData[];
   images: UploadedImage[];
   primaryId: string | null;
   settings: AppSettings;
-  briefText?: string;
+  briefText: string;
   briefUrl?: string;
   existingId?: string;
   existingCaption?: string;
   initialTemplateId?: TemplateId;
-  onSaveProperty: (property: PropertyItem) => void;
+  onSaveProperty: (prop: PropertyItem) => void;
   onBackToNew: () => void;
   onDone: () => void;
 }
 
-function uid(): string {
-  return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
-}
-
 export function ReviewAndKitView({
-  initialStep,
+  initialStep = "review",
   initialData,
-  initialDataList,
+  initialDataList = [],
   images,
   primaryId,
   settings,
-  briefText = "",
-  briefUrl = "",
+  briefText,
+  briefUrl,
   existingId,
   existingCaption,
-  initialTemplateId,
+  initialTemplateId = "bmi",
   onSaveProperty,
   onBackToNew,
   onDone,
 }: ReviewAndKitViewProps) {
   const [step, setStep] = useState<"review" | "kit">(initialStep);
+
+  // Multi-property data state
   const [propertiesData, setPropertiesData] = useState<PropertyData[]>(() => {
     if (initialDataList && initialDataList.length > 0) {
       return initialDataList;
@@ -75,220 +63,111 @@ export function ReviewAndKitView({
   });
   const [activePropertyIndex, setActivePropertyIndex] = useState<number>(0);
 
-  const safePropIndex = Math.min(
-    Math.max(0, activePropertyIndex),
-    propertiesData.length - 1
-  );
-
-  const data = propertiesData[safePropIndex] || initialData;
-  const [customTemplates, setCustomTemplates] = useState<CustomTemplateItem[]>(() =>
-    typeof window !== "undefined" ? getStoredCustomTemplates() : []
-  );
-  const selectedTemplate: TemplateId = initialTemplateId || "bmi";
-
-  const currentSelectedCustomTemplate = customTemplates.find(
-    (t) => t.id === selectedTemplate
-  );
-  const [captions, setCaptions] = useState<string[]>(() => {
-    const list = initialDataList && initialDataList.length > 0 ? initialDataList : [initialData];
-    return list.map((item, idx) => {
-      if (idx === 0 && existingCaption) return existingCaption;
-      return generateCaption(item, settings.captionTemplate, settings);
-    });
-  });
-  const caption = captions[safePropIndex] || "";
-  const setCaption = (newCap: string) => {
-    setCaptions((prev) => {
-      const next = [...prev];
-      next[safePropIndex] = newCap;
-      return next;
-    });
-  };
+  // Images state
   const [localImages, setLocalImages] = useState<UploadedImage[]>(images);
-  const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(settings.logoUrl || null);
+  const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
+
+  // Template state
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(initialTemplateId);
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState<boolean>(false);
+
+  // Canvas selection & interaction state
   const [selectedCanvasItemId, setSelectedCanvasItemId] = useState<string | null>(null);
   const [selectedCanvasItemType, setSelectedCanvasItemType] = useState<"text" | "image" | null>(null);
-  const [imageUploadTargetSlot, setImageUploadTargetSlot] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const effectiveSettings = React.useMemo(
-    () => ({ ...settings, logoUrl: customLogoUrl || settings.logoUrl }),
-    [settings, customLogoUrl]
-  );
-
-  const [exportScale, setExportScale] = useState<number>(1);
-  const [copied, setCopied] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [batchDownloading, setBatchDownloading] = useState(false);
+  // Export state
+  const [exportScale, setExportScale] = useState<number>(2);
+  const [downloading, setDownloading] = useState<boolean>(false);
+  const [batchDownloading, setBatchDownloading] = useState<boolean>(false);
   const [batchProgress, setBatchProgress] = useState<string | null>(null);
-  const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
-  const [generating, setGenerating] = useState(false);
+
+  // Caption state
+  const [caption, setCaption] = useState<string>(() => {
+    if (existingCaption) return existingCaption;
+    return generateCaption(initialData, settings?.captionTemplate || "", settings);
+  });
+
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const offscreenSvgs = useRef<(SVGSVGElement | null)[]>([]);
+  const offscreenSvgs = useRef<Array<SVGSVGElement | null>>([]);
 
-  // Draggable element offsets per property
-  const [itemOffsetsMap, setItemOffsetsMap] = useState<Record<number, Record<string, { dx: number; dy: number }>>>({});
-  const currentItemOffsets = itemOffsetsMap[safePropIndex] || {};
+  const safePropIndex = Math.min(Math.max(0, activePropertyIndex), Math.max(0, propertiesData.length - 1));
+  const currentData = propertiesData[safePropIndex] || initialData;
 
-  // Text box widths per property
-  const [itemWidthsMap, setItemWidthsMap] = useState<Record<number, Record<string, number>>>({});
-  const currentItemWidths = itemWidthsMap[safePropIndex] || {};
+  const safeActiveIndex = localImages.length > 0
+    ? Math.min(Math.max(0, activeImageIndex), localImages.length - 1)
+    : 0;
+  const currentActiveImage = localImages.length > 0 ? localImages[safeActiveIndex]?.url || null : null;
 
-  // Text wrapping per property (true = auto wrap, false = single line)
-  const [itemWrapMap, setItemWrapMap] = useState<Record<number, Record<string, boolean>>>({});
-  const currentItemWrap = itemWrapMap[safePropIndex] || {};
+  const customTemplates: CustomTemplateItem[] =
+    typeof window !== "undefined" ? getStoredCustomTemplates() : [];
+  const currentSelectedCustomTemplate = customTemplates.find((t) => t.id === selectedTemplate);
 
-  // Custom font sizes per property
-  const [itemFontSizesMap, setItemFontSizesMap] = useState<Record<number, Record<string, number>>>({});
-  const currentItemFontSizes = itemFontSizesMap[safePropIndex] || {};
+  // Customization hook for offsets, widths, wrap, font-sizes, and scales
+  const customization = useFlyerCustomization({
+    selectedTemplate,
+    activePropertyIndex: safePropIndex,
+    propertiesCount: propertiesData.length,
+    hasMultipleImages: localImages.length > 1,
+    hasThreeImages: localImages.length > 2,
+    selectedCanvasItemId,
+    currentPropertyData: currentData,
+  });
 
-  const handleItemOffsetsChange = (offsets: Record<string, { dx: number; dy: number }>) => {
-    setItemOffsetsMap((prev) => ({
-      ...prev,
-      [safePropIndex]: offsets,
-    }));
-  };
+  // Re-generate caption when current data changes
+  useEffect(() => {
+    if (!existingCaption) {
+      setCaption(generateCaption(currentData, settings?.captionTemplate || "", settings));
+    }
+  }, [currentData, settings, existingCaption]);
 
-  const handleItemWidthChange = (itemId: string, width: number) => {
-    setItemWidthsMap((prev) => ({
-      ...prev,
-      [safePropIndex]: {
-        ...(prev[safePropIndex] || {}),
-        [itemId]: width,
-      },
-    }));
-  };
-
-  const handleStepItemWidth = (itemId: string, delta: number) => {
-    const boxes = getTemplateItemBoxes(selectedTemplate, localImages.length > 1, localImages.length > 2);
-    const defaultWidth = boxes[itemId]?.width || 400;
-    const currentW = currentItemWidths[itemId] ?? defaultWidth;
-    const nextW = Math.max(120, Math.min(1040, currentW + delta));
-    handleItemWidthChange(itemId, nextW);
-  };
-
-  const handleToggleItemWrap = (itemId: string) => {
-    setItemWrapMap((prev) => {
-      const current = prev[safePropIndex] || {};
-      const isCurrentlyWrapped = current[itemId] !== false; // default is true
-      return {
-        ...prev,
-        [safePropIndex]: {
-          ...current,
-          [itemId]: !isCurrentlyWrapped,
-        },
-      };
-    });
-  };
-
-  const handleStepItemFontSize = (itemId: string, delta: number) => {
-    setItemFontSizesMap((prev) => {
-      const current = prev[safePropIndex] || {};
-      const currentSize = current[itemId] || (
-        itemId === "location" ? (selectedTemplate === "enose" ? 46 : 28) :
-        itemId === "priceNGN" ? 48 :
-        itemId === "documentation" ? 21 : 24
-      );
-      const nextSize = Math.max(12, Math.min(100, currentSize + delta));
-      return {
-        ...prev,
-        [safePropIndex]: {
-          ...current,
-          [itemId]: nextSize,
-        },
-      };
-    });
-  };
-
-  const handleResetActiveItemPosition = () => {
-    if (!selectedCanvasItemId) return;
-    setItemOffsetsMap((prev) => {
-      const current = { ...(prev[safePropIndex] || {}) };
-      delete current[selectedCanvasItemId];
-      return { ...prev, [safePropIndex]: current };
-    });
-  };
-
-  const handleResetActiveItemFormatting = () => {
-    if (!selectedCanvasItemId) return;
-    setItemWidthsMap((prev) => {
-      const copy = { ...(prev[safePropIndex] || {}) };
-      delete copy[selectedCanvasItemId];
-      return { ...prev, [safePropIndex]: copy };
-    });
-    setItemWrapMap((prev) => {
-      const copy = { ...(prev[safePropIndex] || {}) };
-      delete copy[selectedCanvasItemId];
-      return { ...prev, [safePropIndex]: copy };
-    });
-    setItemFontSizesMap((prev) => {
-      const copy = { ...(prev[safePropIndex] || {}) };
-      delete copy[selectedCanvasItemId];
-      return { ...prev, [safePropIndex]: copy };
-    });
-  };
-
-  const handleResetAllPositions = () => {
-    setItemOffsetsMap((prev) => {
-      const copy = { ...prev };
-      delete copy[safePropIndex];
-      return copy;
-    });
-    setItemWidthsMap((prev) => {
-      const copy = { ...prev };
-      delete copy[safePropIndex];
-      return copy;
-    });
-    setItemWrapMap((prev) => {
-      const copy = { ...prev };
-      delete copy[safePropIndex];
-      return copy;
-    });
-    setItemFontSizesMap((prev) => {
-      const copy = { ...prev };
-      delete copy[safePropIndex];
+  const handleUpdateField = (field: keyof PropertyData, value: unknown) => {
+    setPropertiesData((prev) => {
+      const copy = [...prev];
+      const target = copy[safePropIndex] || { ...initialData };
+      copy[safePropIndex] = { ...target, [field]: value };
       return copy;
     });
   };
 
-  const currentItemDefaultBox = useMemo(() => {
-    if (!selectedCanvasItemId) return null;
-    const boxes = getTemplateItemBoxes(selectedTemplate, localImages.length > 1, localImages.length > 2);
-    return boxes[selectedCanvasItemId] || null;
-  }, [selectedCanvasItemId, selectedTemplate, localImages.length]);
+  const handleAddFeature = (feat: string) => {
+    const currentFeats = currentData.features || [];
+    handleUpdateField("features", [...currentFeats, feat]);
+  };
 
-  const activeItemWidth = selectedCanvasItemId
-    ? Math.round(currentItemWidths[selectedCanvasItemId] ?? currentItemDefaultBox?.width ?? 400)
-    : 400;
+  const handleRemoveFeature = (idx: number) => {
+    const currentFeats = currentData.features || [];
+    handleUpdateField("features", currentFeats.filter((_, i) => i !== idx));
+  };
 
-  const isItemWrapActive = selectedCanvasItemId
-    ? currentItemWrap[selectedCanvasItemId] !== false
-    : true;
+  const handleSetPrimaryImage = (id: string) => {
+    const foundIdx = localImages.findIndex((img) => img.id === id);
+    if (foundIdx !== -1) {
+      setActiveImageIndex(foundIdx);
+      const reordered = [
+        localImages[foundIdx],
+        ...localImages.filter((_, i) => i !== foundIdx),
+      ];
+      setLocalImages(reordered);
+    }
+  };
 
-  const activeItemFontSize = selectedCanvasItemId
-    ? (currentItemFontSizes[selectedCanvasItemId] || (
-        selectedCanvasItemId === "location" ? (selectedTemplate === "enose" ? 46 : 28) :
-        selectedCanvasItemId === "priceNGN" ? 48 :
-        selectedCanvasItemId === "documentation" ? 21 : 24
-      ))
-    : 24;
+  const handleDeleteImage = (id: string) => {
+    setLocalImages((prev) => prev.filter((img) => img.id !== id));
+  };
 
-  const hasCustomFormatting = Boolean(
-    (selectedCanvasItemId && currentItemWidths[selectedCanvasItemId] !== undefined) ||
-    (selectedCanvasItemId && currentItemWrap[selectedCanvasItemId] !== undefined) ||
-    (selectedCanvasItemId && currentItemFontSizes[selectedCanvasItemId] !== undefined)
-  );
-
-  // Bound index safely within localImages range
-  const safeActiveIndex =
-    localImages.length > 0
-      ? Math.min(Math.max(0, activeImageIndex), localImages.length - 1)
-      : 0;
-
-  const currentActiveImage =
-    localImages.length > 0
-      ? localImages[safeActiveIndex]?.url || null
-      : localImages.find((img) => img.id === primaryId)?.url || null;
+  const handleUploadImages = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const newItems: UploadedImage[] = [];
+    Array.from(files).forEach((file, i) => {
+      const url = URL.createObjectURL(file);
+      newItems.push({
+        id: `img-${Date.now()}-${i}`,
+        url,
+        name: file.name,
+      });
+    });
+    setLocalImages((prev) => [...prev, ...newItems]);
+  };
 
   const handleSelectPropertyTab = (index: number) => {
     setActivePropertyIndex(index);
@@ -307,318 +186,21 @@ export function ReviewAndKitView({
   const handleSelectCanvasItem = (itemId: string | null, itemType: "text" | "image") => {
     setSelectedCanvasItemId(itemId);
     setSelectedCanvasItemType(itemType);
-
-    if (itemId && itemType === "text") {
-      // Auto-scroll to and focus the corresponding input in the specification form
-      const fieldIdMap: Record<string, string> = {
-        priceNGN: "spec-field-priceNGN",
-        location: "spec-field-location",
-        bedrooms: "spec-field-bedrooms",
-        propertyTitle: "spec-field-propertyTitle",
-        documentation: "spec-field-documentation",
-        furnished: "spec-field-furnished",
-      };
-
-      const targetInputId = fieldIdMap[itemId] || `spec-field-${itemId}`;
-      setTimeout(() => {
-        const el = document.getElementById(targetInputId);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-            el.focus();
-          }
-        }
-      }, 50);
-    } else if (itemId && itemType === "image") {
-      setImageUploadTargetSlot(itemId);
-    }
   };
 
-  const handleAssignExistingImageToSlot = (slotId: string, url: string, name: string) => {
-    if (slotId === "logo") {
-      setCustomLogoUrl(url);
-      return;
-    }
-
-    if (slotId === "image-primary") {
-      const existingIdx = localImages.findIndex((img) => img.url === url);
-      if (existingIdx !== -1) {
-        setActiveImageIndex(existingIdx);
-      }
-      return;
-    }
-
-    if (slotId === "image-secondary-0" || slotId === "image-secondary-1") {
-      const secIdx = slotId === "image-secondary-0" ? 0 : 1;
-      setLocalImages((prev) => {
-        const activeIdx = Math.min(Math.max(0, activeImageIndex), Math.max(0, prev.length - 1));
-        const secondaryIndices: number[] = [];
-        prev.forEach((_, idx) => {
-          if (idx !== activeIdx) secondaryIndices.push(idx);
-        });
-
-        const targetRealIdx = secondaryIndices[secIdx];
-        if (targetRealIdx !== undefined) {
-          const updated = [...prev];
-          updated[targetRealIdx] = {
-            ...updated[targetRealIdx],
-            url,
-            name,
-          };
-          return updated;
-        } else {
-          return [...prev, { id: uid(), url, name }];
-        }
-      });
-    }
-  };
-
-  const handleRemoveSecondarySlot = (slotId: string) => {
-    const secIdx = slotId === "image-secondary-0" ? 0 : 1;
-    setLocalImages((prev) => {
-      const activeIdx = Math.min(Math.max(0, activeImageIndex), Math.max(0, prev.length - 1));
-      const secondaryIndices: number[] = [];
-      prev.forEach((_, idx) => {
-        if (idx !== activeIdx) secondaryIndices.push(idx);
-      });
-
-      const targetRealIdx = secondaryIndices[secIdx];
-      if (targetRealIdx !== undefined) {
-        return prev.filter((_, i) => i !== targetRealIdx);
-      }
-      return prev;
-    });
-  };
-
-  const handleImageSlotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      if (imageUploadTargetSlot === "logo") {
-        setCustomLogoUrl(dataUrl);
-        return;
-      }
-
-      if (imageUploadTargetSlot === "image-primary") {
-        setLocalImages((prev) => {
-          if (prev.length === 0) {
-            return [{ id: uid(), url: dataUrl, name: file.name, size: file.size }];
-          }
-          const updated = [...prev];
-          updated[safeActiveIndex] = {
-            ...updated[safeActiveIndex],
-            url: dataUrl,
-            name: file.name,
-          };
-          return updated;
-        });
-        return;
-      }
-
-      if (
-        imageUploadTargetSlot === "image-secondary-0" ||
-        imageUploadTargetSlot === "image-secondary-1"
-      ) {
-        const secIdx = imageUploadTargetSlot === "image-secondary-0" ? 0 : 1;
-        setLocalImages((prev) => {
-          const activeIdx = Math.min(Math.max(0, activeImageIndex), Math.max(0, prev.length - 1));
-          const secondaryIndices: number[] = [];
-          prev.forEach((_, idx) => {
-            if (idx !== activeIdx) secondaryIndices.push(idx);
-          });
-
-          const targetRealIdx = secondaryIndices[secIdx];
-          if (targetRealIdx !== undefined) {
-            const updated = [...prev];
-            updated[targetRealIdx] = {
-              ...updated[targetRealIdx],
-              url: dataUrl,
-              name: file.name,
-            };
-            return updated;
-          } else {
-            return [...prev, { id: uid(), url: dataUrl, name: file.name, size: file.size }];
-          }
-        });
-      }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
-
-  const getItemLabel = (id: string): string => {
-    switch (id) {
-      case "image-primary":
-        return "Hero Background Photo";
-      case "image-secondary-0":
-        return "Secondary Photo 1";
-      case "image-secondary-1":
-        return "Secondary Photo 2";
-      case "logo":
-        return "Agency Logo";
-      case "furnished":
-        return "Furnished Status";
-      case "bedrooms":
-        return "Bedrooms & Spec";
-      case "location":
-        return "Property Location";
-      case "priceNGN":
-        return "Price (Naira - ₦)";
-      case "priceUsd":
-        return "Price (USD) / Deposit Plan";
-      case "documentation":
-        return "Documentation / Title";
-      case "propertyTitle":
-        return "Property Specs & Type";
-      case "contact":
-        return "Agency Contact Ribbon";
-      default:
-        return id;
-    }
-  };
-
-  const renderInlineQuickEditor = (id: string) => {
-    switch (id) {
-      case "priceNGN":
-        return (
-          <input
-            type="number"
-            value={data.priceNGN ?? ""}
-            onChange={(e) =>
-              updateField(
-                "priceNGN",
-                e.target.value ? parseInt(e.target.value, 10) : null
-              )
-            }
-            placeholder="Price NGN..."
-            className="w-32 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
-          />
-        );
-      case "location":
-        return (
-          <input
-            type="text"
-            value={data.location || ""}
-            onChange={(e) => updateField("location", e.target.value)}
-            placeholder="Location..."
-            className="w-40 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
-          />
-        );
-      case "documentation":
-        return (
-          <input
-            type="text"
-            value={data.documentation || ""}
-            onChange={(e) => updateField("documentation", e.target.value)}
-            placeholder="Title / Docs..."
-            className="w-36 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
-          />
-        );
-      case "bedrooms":
-        return (
-          <input
-            type="number"
-            value={data.bedrooms ?? ""}
-            onChange={(e) =>
-              updateField(
-                "bedrooms",
-                e.target.value ? parseInt(e.target.value, 10) : null
-              )
-            }
-            placeholder="Beds..."
-            className="w-20 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
-          />
-        );
-      case "propertyTitle":
-        return (
-          <input
-            type="text"
-            value={data.propertyType || ""}
-            onChange={(e) => updateField("propertyType", e.target.value)}
-            placeholder="Property type..."
-            className="w-36 py-1 px-2.5 rounded-lg bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#F26522]"
-          />
-        );
-      case "furnished":
-        return (
-          <div className="flex gap-1 bg-white/10 p-0.5 rounded-lg text-xs">
-            <button
-              type="button"
-              onClick={() => updateField("furnished", true)}
-              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                data.furnished === true
-                  ? "bg-[#F26522] text-white"
-                  : "text-slate-200"
-              }`}
-            >
-              Furnished
-            </button>
-            <button
-              type="button"
-              onClick={() => updateField("furnished", false)}
-              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                data.furnished === false
-                  ? "bg-[#F26522] text-white"
-                  : "text-slate-200"
-              }`}
-            >
-              Unfurnished
-            </button>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const updateField = <K extends keyof PropertyData>(key: K, value: PropertyData[K]) => {
-    setPropertiesData((prev) => {
-      const next = [...prev];
-      const current = next[safePropIndex] || initialData;
-      const updated = { ...current, [key]: value };
-      next[safePropIndex] = updated;
-
-      if (
-        key === "bedrooms" ||
-        key === "propertyType" ||
-        key === "location" ||
-        key === "priceNGN" ||
-        key === "documentation"
-      ) {
-        setCaptions((prevCaps) => {
-          const nextCaps = [...prevCaps];
-          nextCaps[safePropIndex] = generateCaption(updated, settings.captionTemplate, settings);
-          return nextCaps;
-        });
-      }
-      return next;
-    });
-  };
-
-  const handleConfirmGenerate = async () => {
-    setGenerating(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setGenerating(false);
-
-    const generatedCaption =
-      caption || generateCaption(data, settings.captionTemplate, settings);
-
+  const handleProceedToKit = () => {
     const item: PropertyItem = {
-      id: existingId || uid(),
-      data,
+      id: existingId || `prop-${Date.now()}`,
+      data: currentData,
       images: localImages,
       primaryId: primaryId || localImages[0]?.id || null,
-      caption: generatedCaption,
+      caption,
       status: "Ready",
       createdAt: new Date().toISOString(),
       briefText,
       briefUrl,
       templateId: selectedTemplate,
     };
-
     onSaveProperty(item);
     setStep("kit");
   };
@@ -638,7 +220,7 @@ export function ReviewAndKitView({
       a.href = url;
       const scaleSuffix = exportScale > 1 ? `@${exportScale}x-HD` : "";
       const outputSuffix = localImages.length > 1 ? `-flyer-${targetIndex + 1}` : "";
-      const targetProp = propertiesData[targetIndex] || data;
+      const targetProp = propertiesData[targetIndex] || currentData;
       a.download = `${(targetProp.propertyTitle || "property-flyer")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")}${outputSuffix}-${selectedTemplate}${scaleSuffix}.png`;
@@ -659,14 +241,14 @@ export function ReviewAndKitView({
       const JSZipModule = await import("jszip");
       const JSZip = JSZipModule.default;
       const zip = new JSZip();
-      const primaryProp = propertiesData[0] || data;
+      const primaryProp = propertiesData[0] || currentData;
       const titleSlug = (primaryProp.propertyTitle || "property-flyer")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-");
 
       for (let i = 0; i < localImages.length; i++) {
         setBatchProgress(`Rendering flyer ${i + 1} of ${localImages.length}...`);
-        const targetProp = propertiesData[i] || propertiesData[0] || data;
+        const targetProp = propertiesData[i] || propertiesData[0] || currentData;
         const targetTitleSlug = (targetProp.propertyTitle || "property-flyer")
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-");
@@ -710,7 +292,7 @@ export function ReviewAndKitView({
     try {
       for (let i = 0; i < localImages.length; i++) {
         setBatchProgress(`Downloading flyer ${i + 1} of ${localImages.length}...`);
-        const targetProp = propertiesData[i] || propertiesData[0] || data;
+        const targetProp = propertiesData[i] || propertiesData[0] || currentData;
         const targetTitleSlug = (targetProp.propertyTitle || "property-flyer")
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-");
@@ -739,38 +321,6 @@ export function ReviewAndKitView({
       setBatchProgress(null);
     }
   };
-
-  const handleShare = async () => {
-    if (!svgRef.current) return;
-    const blob = await svgToPngBlob(svgRef.current, 1);
-    if (!blob) return;
-
-    if (navigator.share && navigator.canShare) {
-      const file = new File([blob], `flyer-${safeActiveIndex + 1}.png`, { type: "image/png" });
-      if (navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: data.propertyTitle || "BMI Property Creative",
-            text: caption,
-          });
-          return;
-        } catch {
-          // fall through to download
-        }
-      }
-    }
-    handleDownloadPng();
-  };
-
-  const handleCopyCaption = () => {
-    navigator.clipboard?.writeText(caption);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const isMissing = (val: unknown) =>
-    val === null || val === undefined || val === EMPTY_FIELD || val === "";
 
   return (
     <div className="max-w-6xl mx-auto py-4 px-2 sm:px-4">
@@ -802,7 +352,7 @@ export function ReviewAndKitView({
         )}
       </div>
 
-      {/* Multi-Property Tabs Bar (Shown when 2 or more properties exist) */}
+      {/* Multi-Property Tabs Bar */}
       {propertiesData.length > 1 && (
         <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200/90 shadow-xs mb-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -826,9 +376,7 @@ export function ReviewAndKitView({
                     >
                       <span
                         className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
-                          isActive
-                            ? "bg-[#F26522] text-white"
-                            : "bg-slate-200 text-slate-700"
+                          isActive ? "bg-[#F26522] text-white" : "bg-slate-200 text-slate-700"
                         }`}
                       >
                         {pIdx + 1}
@@ -848,883 +396,110 @@ export function ReviewAndKitView({
                 })}
               </div>
             </div>
-
             <div className="text-[11px] font-semibold text-slate-500 px-1 hidden md:block">
-              Select tab to update specifications & flyer preview for each property
+              Select tab to update specifications &amp; flyer preview for each property
             </div>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* LEFT COLUMN: Controls or Kit Details */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* STEP 1: REVIEW FIELDS */}
-          {step === "review" && (
-            <>
-              {/* Property Specifications */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-wider text-[#1B494E] pb-3 border-b border-slate-100">
-                Property Specifications
-              </h3>
-
-              {/* Property Title */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
-                  Property Title
-                </label>
-                <input
-                  id="spec-field-propertyTitle"
-                  type="text"
-                  value={data.propertyTitle}
-                  onFocus={() => handleSelectCanvasItem("propertyTitle", "text")}
-                  onChange={(e) => updateField("propertyTitle", e.target.value)}
-                  className={`w-full py-2.5 px-3.5 rounded-lg border text-sm font-semibold transition-all focus:outline-none ${
-                    selectedCanvasItemId === "propertyTitle"
-                      ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
-                      : "border-slate-200 focus:ring-2 focus:ring-[#1B494E]/20 focus:border-[#1B494E]"
-                  }`}
-                />
-              </div>
-
-              {/* 2-Column Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Property Type */}
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
-                    Property Type
-                  </label>
-                  <input
-                    id="spec-field-propertyType"
-                    type="text"
-                    value={data.propertyType}
-                    onFocus={() => handleSelectCanvasItem("propertyTitle", "text")}
-                    onChange={(e) => updateField("propertyType", e.target.value)}
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
-                      selectedCanvasItemId === "propertyTitle"
-                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
-                        : isMissing(data.propertyType)
-                        ? "border-amber-300 bg-amber-50/50"
-                        : "border-slate-200"
-                    }`}
-                  />
-                </div>
-
-                {/* Location */}
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
-                    Location
-                  </label>
-                  <input
-                    id="spec-field-location"
-                    type="text"
-                    value={data.location}
-                    onFocus={() => handleSelectCanvasItem("location", "text")}
-                    onChange={(e) => updateField("location", e.target.value)}
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
-                      selectedCanvasItemId === "location"
-                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
-                        : isMissing(data.location)
-                        ? "border-amber-300 bg-amber-50/50"
-                        : "border-slate-200"
-                    }`}
-                  />
-                </div>
-
-                {/* Bedrooms */}
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
-                    Bedrooms
-                  </label>
-                  <input
-                    id="spec-field-bedrooms"
-                    type="number"
-                    value={data.bedrooms ?? ""}
-                    onFocus={() => handleSelectCanvasItem("bedrooms", "text")}
-                    onChange={(e) =>
-                      updateField(
-                        "bedrooms",
-                        e.target.value ? parseInt(e.target.value, 10) : null
-                      )
-                    }
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
-                      selectedCanvasItemId === "bedrooms"
-                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
-                        : isMissing(data.bedrooms)
-                        ? "border-amber-300 bg-amber-50/50"
-                        : "border-slate-200"
-                    }`}
-                  />
-                </div>
-
-                {/* Price NGN */}
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
-                    Price (Naira)
-                  </label>
-                  <input
-                    id="spec-field-priceNGN"
-                    type="number"
-                    value={data.priceNGN ?? ""}
-                    onFocus={() => handleSelectCanvasItem("priceNGN", "text")}
-                    onChange={(e) =>
-                      updateField(
-                        "priceNGN",
-                        e.target.value ? parseInt(e.target.value, 10) : null
-                      )
-                    }
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm font-bold transition-all focus:outline-none ${
-                      selectedCanvasItemId === "priceNGN"
-                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 text-[#F26522] shadow-xs"
-                        : isMissing(data.priceNGN)
-                        ? "border-amber-300 bg-amber-50/50 text-[#1B494E]"
-                        : "border-slate-200 text-[#1B494E]"
-                    }`}
-                  />
-                </div>
-
-                {/* Documentation */}
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
-                    Documentation / Title
-                  </label>
-                  <input
-                    id="spec-field-documentation"
-                    type="text"
-                    value={data.documentation}
-                    onFocus={() => handleSelectCanvasItem("documentation", "text")}
-                    onChange={(e) => updateField("documentation", e.target.value)}
-                    className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
-                      selectedCanvasItemId === "documentation"
-                        ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
-                        : isMissing(data.documentation)
-                        ? "border-amber-300 bg-amber-50/50"
-                        : "border-slate-200"
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Furnished Status */}
-              <div
-                id="spec-field-furnished"
-                className={`p-2.5 rounded-xl transition-all ${
-                  selectedCanvasItemId === "furnished"
-                    ? "ring-2 ring-[#F26522] bg-orange-50/20"
-                    : ""
-                }`}
-              >
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">
-                  Furnished Status
-                </label>
-                <div className="flex gap-2">
-                  {[
-                    { label: "Furnished", value: true },
-                    { label: "Unfurnished", value: false },
-                    { label: "Unknown", value: null },
-                  ].map((opt) => (
-                    <button
-                      key={opt.label}
-                      type="button"
-                      onClick={() => {
-                        handleSelectCanvasItem("furnished", "text");
-                        updateField("furnished", opt.value);
-                      }}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition-transform duration-150 ease-out cursor-pointer active:scale-[0.98] ${
-                        data.furnished === opt.value
-                          ? "bg-[#F26522] border-[#F26522] text-white shadow-xs"
-                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Features tags */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
-                  Features & Highlights (e.g. BQ, Swimming Pool, 24hr Power)
-                </label>
-                <input
-                  type="text"
-                  value={data.features.join(", ")}
-                  onChange={(e) =>
-                    updateField(
-                      "features",
-                      e.target.value
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                    )
-                  }
-                  className="w-full py-2.5 px-3.5 rounded-lg border border-slate-200 text-sm focus:outline-none"
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={onBackToNew}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-100 transition-transform duration-150 ease-out cursor-pointer active:scale-[0.98]"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmGenerate}
-                  disabled={generating}
-                  className="px-6 py-3 rounded-xl bg-[#1B494E] hover:bg-[#14383C] text-white font-bold text-sm flex items-center gap-2 shadow-md cursor-pointer transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      <span>Generating Template...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={16} />
-                      <span>Confirm & Generate Kit</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-            </>
-          )}
-
-          {/* STEP 2: MARKETING KIT CONTROLS & CAPTION */}
-          {step === "kit" && (
-            <div className="space-y-6">
-              {/* Export & Resolution Scale Bar */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Layers size={16} className="text-[#1B494E]" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-[#1B494E]">
-                      Export Resolution
-                    </h3>
-                  </div>
-                  <div className="flex gap-1.5 bg-slate-100 p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setExportScale(1)}
-                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                        exportScale === 1
-                          ? "bg-white text-[#1B494E] shadow-xs"
-                          : "text-slate-500 hover:text-slate-900"
-                      }`}
-                    >
-                      1x (1080×1350)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExportScale(2)}
-                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                        exportScale === 2
-                          ? "bg-white text-[#1B494E] shadow-xs"
-                          : "text-slate-500 hover:text-slate-900"
-                      }`}
-                    >
-                      2x Ultra HD (2160×2700)
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => handleDownloadPng()}
-                    disabled={downloading || batchDownloading}
-                    className="flex-1 py-3.5 px-5 rounded-xl bg-[#1B494E] hover:bg-[#14383C] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md shadow-[#1B494E]/20 transition-transform duration-120 ease-out cursor-pointer active:scale-[0.98] disabled:opacity-50"
-                  >
-                    <Download size={16} />
-                    <span>
-                      {downloading
-                        ? "Rendering PNG..."
-                        : images.length > 1
-                        ? `Download Flyer ${safeActiveIndex + 1} PNG`
-                        : `Download ${exportScale === 2 ? "2x Ultra HD " : ""}PNG`}
-                    </span>
-                  </button>
-                  <button
-                    onClick={handleShare}
-                    disabled={downloading || batchDownloading}
-                    className="py-3.5 px-6 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md shadow-orange-600/20 transition-transform duration-120 ease-out cursor-pointer active:scale-[0.98] disabled:opacity-50"
-                  >
-                    <Share2 size={16} />
-                    <span>Share</span>
-                  </button>
-                </div>
-
-                {/* Batch Export Options for Multi-Image Generation */}
-                {images.length > 1 && (
-                  <div className="pt-3 border-t border-slate-100 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-700">
-                        Batch Export All {images.length} Outputs
-                      </span>
-                      {batchProgress && (
-                        <span className="text-[11px] font-semibold text-orange-600 flex items-center gap-1.5">
-                          <Loader2 size={12} className="animate-spin" />
-                          {batchProgress}
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={handleDownloadAllZip}
-                        disabled={batchDownloading || downloading}
-                        className="py-3 px-4 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#F26522] border border-orange-200 font-bold text-xs flex items-center justify-center gap-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50"
-                      >
-                        <FolderArchive size={16} />
-                        <span>Download All ({images.length}) as ZIP</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDownloadAllSeparate}
-                        disabled={batchDownloading || downloading}
-                        className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50"
-                      >
-                        <Download size={16} />
-                        <span>Download All Separately</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* All Generated Outputs Gallery Grid (Multi-Image Processed Individually) */}
-              {localImages.length > 1 && (
-                <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div>
-                      <h3 className="font-extrabold text-[#1B494E] text-xs uppercase tracking-wider flex items-center gap-1.5">
-                        <Images size={15} />
-                        <span>All Generated Outputs ({localImages.length} Flyers)</span>
-                      </h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Each uploaded image was processed individually using the {selectedTemplate.toUpperCase()} template.
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-600 px-2 py-0.5 bg-slate-100 rounded-md">
-                      {localImages.length} Outputs
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {localImages.map((img, idx) => {
-                      const isCurrent = idx === safeActiveIndex;
-                      return (
-                        <div
-                          key={img.id || idx}
-                          className={`p-2 rounded-xl border transition-all flex flex-col justify-between ${
-                            isCurrent
-                              ? "border-[#F26522] bg-orange-50/20 ring-1 ring-[#F26522]"
-                              : "border-slate-200 bg-white hover:border-slate-300"
-                          }`}
-                        >
-                          <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-slate-100 mb-2">
-                            <img
-                              src={img.url}
-                              alt={`Flyer ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-1.5 left-1.5 bg-[#1B494E]/90 backdrop-blur-xs text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded shadow-xs">
-                              Flyer {idx + 1}
-                            </div>
-                            {idx === 0 && (
-                              <div className="absolute top-1.5 right-1.5 bg-[#F26522] text-white text-[8px] font-bold px-1 py-0.5 rounded shadow-xs">
-                                COVER
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectImageIndex(idx)}
-                              className={`w-full py-1.5 rounded-md text-[11px] font-bold flex items-center justify-center gap-1 transition-transform duration-120 cursor-pointer active:scale-[0.98] ${
-                                isCurrent
-                                  ? "bg-[#1B494E] text-white"
-                                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                              }`}
-                            >
-                              <Eye size={12} />
-                              <span>{isCurrent ? "Active" : "Preview"}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadPng(idx)}
-                              disabled={downloading || batchDownloading}
-                              className="w-full py-1.5 rounded-md bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center gap-1 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50"
-                            >
-                              <Download size={11} />
-                              <span>PNG</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Instagram Caption Card */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h3 className="font-extrabold text-[#1B494E] text-sm uppercase tracking-wider">
-                    Instagram Caption
-                  </h3>
-                  <button
-                    onClick={handleCopyCaption}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#E6EEEE] hover:bg-[#1B494E] hover:text-white text-[#1B494E] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
-                  >
-                    {copied ? (
-                      <>
-                        <CheckCircle2 size={14} className="text-emerald-600" />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={14} />
-                        <span>Copy Caption</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <textarea
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  rows={12}
-                  className="w-full p-4 rounded-xl bg-[#F8FAFA] border border-slate-200 text-xs font-mono text-slate-700 leading-relaxed focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20"
-                />
-
-                <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 text-blue-900 text-xs leading-relaxed">
-                  💡 <strong>Tip:</strong> Tap <strong>Copy Caption</strong> above, download or share your flyer, then paste the caption right into your Instagram post!
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN: LIVE FLYER SVG CANVAS */}
-        <div className="lg:col-span-5 sticky top-20 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-[#1B494E]">
-                Live Flyer Preview
-              </span>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#1B494E] text-white">
-                {localImages.length <= 1 ? "1 Flyer" : `${localImages.length} Flyers`}
-              </span>
-            </div>
-            <span className="text-[11px] font-semibold text-slate-400">
-              1080 × 1350 (4:5)
-            </span>
-          </div>
-
-
-          {/* Multi-Image Flyer Pager Bar (Shown when localImages.length > 1) */}
-          {localImages.length > 1 && (
-            <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-orange-100 text-[#F26522] flex items-center justify-center font-black text-xs">
-                    {safeActiveIndex + 1}
-                  </div>
-                  <div>
-                    <div className="text-xs font-extrabold text-[#1B494E] leading-tight">
-                      Flyer {safeActiveIndex + 1} of {localImages.length}
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      {selectedTemplate.toUpperCase()} Template
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectImageIndex(Math.max(0, safeActiveIndex - 1))}
-                    disabled={safeActiveIndex === 0}
-                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-transform duration-120 active:scale-[0.98] cursor-pointer"
-                    title="Previous flyer"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectImageIndex(Math.min(localImages.length - 1, safeActiveIndex + 1))}
-                    disabled={safeActiveIndex === localImages.length - 1}
-                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-transform duration-120 active:scale-[0.98] cursor-pointer"
-                    title="Next flyer"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Thumbnails Quick Switcher Strip */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
-                {localImages.map((img, idx) => {
-                  const isActive = idx === safeActiveIndex;
-                  return (
-                    <button
-                      key={img.id || idx}
-                      type="button"
-                      onClick={() => handleSelectImageIndex(idx)}
-                      className={`relative flex-shrink-0 w-12 h-14 rounded-lg overflow-hidden border-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] ${
-                        isActive
-                          ? "border-[#F26522] ring-2 ring-orange-500/30 scale-105 shadow-xs"
-                          : "border-slate-200 opacity-70 hover:opacity-100"
-                      }`}
-                    >
-                      <img
-                        src={img.url}
-                        alt={`Flyer ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      <span className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[9px] font-bold text-center py-0.5">
-                        {idx + 1}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Hidden File Input for Container Slot Uploads */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageSlotUpload}
-          />
-
-          {/* Interactive Canvas Element Inspector Bar */}
-          {selectedCanvasItemId ? (
-            <div className="bg-[#1B494E] text-white p-3 rounded-xl shadow-md border border-teal-800 space-y-2.5 transition-all">
-              {/* Row 1: Item Info & Primary Element Actions */}
-              <div className="flex flex-wrap items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm">
-                    {selectedCanvasItemType === "image" ? "📷" : "✏️"}
-                  </span>
-                  <div>
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-teal-300">
-                      Selected Element
-                    </div>
-                    <div className="text-xs font-black text-white">
-                      {getItemLabel(selectedCanvasItemId)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Image slot actions */}
-                  {selectedCanvasItemType === "image" && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImageUploadTargetSlot(selectedCanvasItemId);
-                          fileInputRef.current?.click();
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-[#F26522] hover:bg-[#d95315] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-transform duration-120 active:scale-95"
-                      >
-                        <Upload size={13} />
-                        <span>Upload Photo</span>
-                      </button>
-
-                      {/* Quick photo assignment from localImages */}
-                      {localImages.length > 0 && selectedCanvasItemId !== "logo" && (
-                        <div className="flex items-center gap-1 bg-black/25 px-2 py-1 rounded-lg">
-                          <span className="text-[10px] text-teal-200 font-bold">Assign:</span>
-                          {localImages.map((img, qIdx) => (
-                            <button
-                              key={img.id || qIdx}
-                              type="button"
-                              onClick={() =>
-                                handleAssignExistingImageToSlot(
-                                  selectedCanvasItemId,
-                                  img.url,
-                                  img.name
-                                )
-                              }
-                              className="px-2 py-0.5 rounded bg-white/10 hover:bg-[#F26522] text-white text-[10px] font-bold transition-colors cursor-pointer"
-                              title={`Assign Photo ${qIdx + 1} (${img.name}) to this slot`}
-                            >
-                              Photo ${qIdx + 1}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {(selectedCanvasItemId === "image-secondary-0" || selectedCanvasItemId === "image-secondary-1") && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSecondarySlot(selectedCanvasItemId)}
-                          className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                          title="Clear photo from this container"
-                        >
-                          <Trash2 size={12} />
-                          <span>Clear</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Text slot inline quick editor & Focus button */}
-                  {selectedCanvasItemType === "text" && (
-                    <div className="flex items-center gap-2">
-                      {renderInlineQuickEditor(selectedCanvasItemId)}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (step !== "review") setStep("review");
-                          setTimeout(() => {
-                            const el = document.getElementById(
-                              `spec-field-${selectedCanvasItemId}`
-                            );
-                            el?.scrollIntoView({
-                              behavior: "smooth",
-                              block: "center",
-                            });
-                            el?.focus();
-                          }, 100);
-                        }}
-                        className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-transform duration-120 active:scale-95"
-                      >
-                        <span>Focus in Form</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Drag repositioning badge & Reset button */}
-                  {selectedCanvasItemId && currentItemOffsets[selectedCanvasItemId] && (currentItemOffsets[selectedCanvasItemId].dx !== 0 || currentItemOffsets[selectedCanvasItemId].dy !== 0) && (
-                    <div className="flex items-center gap-1.5 bg-black/25 px-2.5 py-1 rounded-lg">
-                      <span className="text-[10px] text-teal-200 font-bold flex items-center gap-1">
-                        <Move size={11} />
-                        <span>
-                          {currentItemOffsets[selectedCanvasItemId].dx > 0 ? `+${currentItemOffsets[selectedCanvasItemId].dx}` : currentItemOffsets[selectedCanvasItemId].dx}px, {currentItemOffsets[selectedCanvasItemId].dy > 0 ? `+${currentItemOffsets[selectedCanvasItemId].dy}` : currentItemOffsets[selectedCanvasItemId].dy}px
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleResetActiveItemPosition}
-                        className="ml-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                        title="Reset element to original template position"
-                      >
-                        <RotateCcw size={10} />
-                        <span>Reset</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Deselect button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCanvasItemId(null);
-                      setSelectedCanvasItemType(null);
-                    }}
-                    className="p-1 rounded-md text-teal-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                    title="Deselect element"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              {/* Row 2: Dedicated Text Formatting Toolbar (Width, Wrap, Font Size) */}
-              {selectedCanvasItemType === "text" && (
-                <div className="pt-2.5 border-t border-teal-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Text Box Width Stepper & Indicator */}
-                    <div className="flex items-center bg-black/30 rounded-lg p-0.5 border border-white/10">
-                      <span className="text-[10px] font-bold text-teal-200 px-2 flex items-center gap-1">
-                        <span>Width:</span>
-                        <span className="font-mono text-white text-xs font-black">{activeItemWidth}px</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleStepItemWidth(selectedCanvasItemId, -20)}
-                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95"
-                        title="Narrow text box width (-20px)"
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleStepItemWidth(selectedCanvasItemId, 20)}
-                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95"
-                        title="Widen text box width (+20px)"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-
-                    {/* Text Wrap Toggle Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleItemWrap(selectedCanvasItemId)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 ${
-                        isItemWrapActive
-                          ? "bg-emerald-600 hover:bg-emerald-500 text-white ring-1 ring-emerald-400"
-                          : "bg-white/10 hover:bg-white/20 text-slate-300"
-                      }`}
-                      title={
-                        isItemWrapActive
-                          ? "Text wrapping is ON (click to force single line)"
-                          : "Text wrapping is OFF (click to enable multi-line wrap)"
-                      }
-                    >
-                      <WrapText size={13} />
-                      <span>Wrap: {isItemWrapActive ? "ON" : "OFF"}</span>
-                    </button>
-
-                    {/* Font Size Stepper */}
-                    <div className="flex items-center bg-black/30 rounded-lg p-0.5 border border-white/10">
-                      <span className="text-[10px] font-bold text-teal-200 px-2 flex items-center gap-1">
-                        <Type size={11} />
-                        <span className="font-mono text-white text-xs font-black">{activeItemFontSize}px</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleStepItemFontSize(selectedCanvasItemId, -2)}
-                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95"
-                        title="Decrease font size (-2px)"
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleStepItemFontSize(selectedCanvasItemId, 2)}
-                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95"
-                        title="Increase font size (+2px)"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Reset Box Formatting (Width, Wrap, Font Size) */}
-                  {hasCustomFormatting && (
-                    <button
-                      type="button"
-                      onClick={handleResetActiveItemFormatting}
-                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-teal-100 hover:text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                      title="Reset text box width, wrapping, and font size to default"
-                    >
-                      <RotateCcw size={11} />
-                      <span>Reset Box</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-orange-50/70 border border-orange-100 text-orange-950 text-[11px]">
-              <span className="flex items-center gap-1.5 font-medium">
-                <span>💡</span>
-                <span>
-                  <strong>Interactive Canvas:</strong> Click & drag any text, badge, logo, or photo to reposition it. Click text to adjust width, wrap & size with the toolbar or side handles.
-                </span>
-              </span>
-              {Object.keys(currentItemOffsets).length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleResetAllPositions}
-                  className="text-[10px] font-bold text-[#F26522] hover:text-[#d95315] flex items-center gap-1 cursor-pointer flex-shrink-0 ml-2"
-                  title="Reset all customized positions on this flyer"
-                >
-                  <RotateCcw size={11} />
-                  <span>Reset All</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Main Flyer Canvas */}
-          <FlyerCanvas
-            data={data}
-            settings={effectiveSettings}
-            svgRef={svgRef}
-            primaryImage={currentActiveImage}
-            secondaryImages={
-              localImages
-                .filter((_, idx) => idx !== safeActiveIndex)
-                .map((img) => img.url)
-            }
-            templateId={selectedTemplate}
-            customTemplate={currentSelectedCustomTemplate}
-            selectedItemId={selectedCanvasItemId}
-            onSelectItem={handleSelectCanvasItem}
-            onTriggerUpload={(slotId) => {
-              setImageUploadTargetSlot(slotId);
-              fileInputRef.current?.click();
-            }}
-            itemOffsets={currentItemOffsets}
-            onItemOffsetsChange={handleItemOffsetsChange}
-            draggable={true}
-            itemWidths={currentItemWidths}
-            onItemWidthChange={handleItemWidthChange}
-            itemWrap={currentItemWrap}
-            itemFontSizes={currentItemFontSizes}
-          />
-        </div>
-      </div>
+      {/* Main Content: Step 1 vs Step 2 */}
+      {step === "review" ? (
+        <PropertyReviewStep
+          data={currentData}
+          propertiesData={propertiesData}
+          safePropIndex={safePropIndex}
+          localImages={localImages}
+          selectedCanvasItemId={selectedCanvasItemId}
+          onSelectCanvasItem={handleSelectCanvasItem}
+          onUpdateField={handleUpdateField}
+          onAddFeature={handleAddFeature}
+          onRemoveFeature={handleRemoveFeature}
+          onSetPrimaryImage={handleSetPrimaryImage}
+          onDeleteImage={handleDeleteImage}
+          onUploadImages={handleUploadImages}
+          onSelectPropertyTab={handleSelectPropertyTab}
+          onProceedToKit={handleProceedToKit}
+        />
+      ) : (
+        <MarketingKitStep
+          data={currentData}
+          propertiesData={propertiesData}
+          safePropIndex={safePropIndex}
+          localImages={localImages}
+          safeActiveIndex={safeActiveIndex}
+          currentActiveImage={currentActiveImage}
+          selectedTemplate={selectedTemplate}
+          currentSelectedCustomTemplate={currentSelectedCustomTemplate}
+          effectiveSettings={settings}
+          svgRef={svgRef}
+          selectedCanvasItemId={selectedCanvasItemId}
+          selectedCanvasItemType={selectedCanvasItemType}
+          currentItemDefaultBox={customization.currentItemDefaultBox}
+          currentItemOffsets={customization.currentItemOffsets}
+          currentItemWidths={customization.currentItemWidths}
+          currentItemWrap={customization.currentItemWrap}
+          currentItemFontSizes={customization.currentItemFontSizes}
+          currentItemScales={customization.currentItemScales}
+          activeItemWidth={customization.activeItemWidth}
+          isItemWrapActive={customization.isItemWrapActive}
+          activeItemFontSize={customization.activeItemFontSize}
+          activeItemScale={customization.activeItemScale}
+          hasCustomFormatting={customization.hasCustomFormatting}
+          exportScale={exportScale}
+          downloading={downloading}
+          batchDownloading={batchDownloading}
+          batchProgress={batchProgress}
+          caption={caption}
+          onCaptionChange={setCaption}
+          onSelectImageIndex={handleSelectImageIndex}
+          onSelectCanvasItem={handleSelectCanvasItem}
+          onItemOffsetsChange={customization.handleItemOffsetsChange}
+          onItemWidthChange={customization.handleItemWidthChange}
+          onStepItemWidth={customization.handleStepItemWidth}
+          onToggleItemWrap={customization.handleToggleItemWrap}
+          onStepItemFontSize={customization.handleStepItemFontSize}
+          onStepItemScale={customization.handleStepItemScale}
+          onAutoFitActiveItem={customization.handleAutoFitActiveItem}
+          onResetActiveItemPosition={customization.handleResetActiveItemPosition}
+          onResetActiveItemFormatting={customization.handleResetActiveItemFormatting}
+          onResetAllPositions={customization.handleResetAllPositions}
+          onSetExportScale={setExportScale}
+          onDownloadPng={handleDownloadPng}
+          onDownloadAllZip={handleDownloadAllZip}
+          onDownloadAllSeparate={handleDownloadAllSeparate}
+          onOpenTemplateModal={() => setTemplateSelectorOpen(true)}
+        />
+      )}
 
       {/* Offscreen SVG Canvases for Instant Multi-Flyer PNG & ZIP Export */}
-      <div
-        style={{
-          position: "absolute",
-          left: -9999,
-          top: -9999,
-          width: 1080,
-          height: 1350,
-          overflow: "hidden",
-          pointerEvents: "none",
-          visibility: "hidden",
-        }}
-        aria-hidden="true"
-      >
-        {localImages.map((img, idx) => (
-          <div
-            key={img.id || idx}
-            ref={(el) => {
-              if (el) {
-                const svg = el.querySelector("svg");
-                if (svg) offscreenSvgs.current[idx] = svg;
-              }
-            }}
-          >
-            <FlyerCanvas
-              data={propertiesData[idx] || data}
-              settings={effectiveSettings}
-              primaryImage={img.url}
-              secondaryImages={
-                localImages
-                  .filter((_, i) => i !== idx)
-                  .map((m) => m.url)
-              }
-              templateId={selectedTemplate}
-              customTemplate={currentSelectedCustomTemplate}
-              itemOffsets={itemOffsetsMap[idx] || {}}
-              itemWidths={itemWidthsMap[idx] || {}}
-              itemWrap={itemWrapMap[idx] || {}}
-              itemFontSizes={itemFontSizesMap[idx] || {}}
-              draggable={false}
-            />
-          </div>
-        ))}
-      </div>
+      <BatchExportOffscreen
+        localImages={localImages}
+        propertiesData={propertiesData}
+        defaultData={currentData}
+        settings={settings}
+        selectedTemplate={selectedTemplate}
+        customTemplate={currentSelectedCustomTemplate}
+        itemOffsetsMap={customization.itemOffsetsMap}
+        itemWidthsMap={customization.itemWidthsMap}
+        itemWrapMap={customization.itemWrapMap}
+        itemFontSizesMap={customization.itemFontSizesMap}
+        itemScalesMap={customization.itemScalesMap}
+        offscreenSvgs={offscreenSvgs}
+      />
+
+      {/* Template Selector Modal */}
+      {templateSelectorOpen && (
+        <TemplateSelectorModal
+          isOpen={templateSelectorOpen}
+          onClose={() => setTemplateSelectorOpen(false)}
+          selectedTemplateId={selectedTemplate}
+          onSelectTemplate={(tplId) => {
+            setSelectedTemplate(tplId);
+            setTemplateSelectorOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

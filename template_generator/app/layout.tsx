@@ -48,6 +48,8 @@ export const metadata: Metadata = {
   description: "Generate high-converting property flyers and captions from raw briefs",
 };
 
+import { PropKitProvider } from "../context/PropKitContext";
+
 export default function RootLayout({
   children,
 }: {
@@ -58,7 +60,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${cinzel.variable} ${playfair.variable} ${plusJakarta.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <PropKitProvider>{children}</PropKitProvider>
+      </body>
     </html>
   );
 }

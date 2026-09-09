@@ -4,7 +4,7 @@ import React from "react";
 import { TemplateDefinition, TemplateRenderProps, FlierItemBox, FlierImageSlot, FlierTextSlot } from "./types";
 import { EKO_LOGO_DATA_URL } from "../../utils/templateLogos";
 import { FIXED_CONTACT } from "../../utils/constants";
-import { wrapSvgText } from "../../utils/textWrap";
+import { wrapSvgText, fitSvgText } from "../../utils/textWrap";
 
 const CANVAS_W = 1080;
 const CANVAS_H = 1350;
@@ -24,21 +24,31 @@ export const getEkoItemBoxes = (hasSec: boolean): Record<string, FlierItemBox> =
     id: "image-secondary-0",
     type: "image",
     label: "Secondary Photo 1",
-    x: 60,
-    y: 110,
-    width: 480,
-    height: 320,
+    x: 640,
+    y: 60,
+    width: 175,
+    height: 130,
+    rx: 16,
+  },
+  "image-secondary-1": {
+    id: "image-secondary-1",
+    type: "image",
+    label: "Secondary Photo 2",
+    x: 830,
+    y: 60,
+    width: 175,
+    height: 130,
     rx: 16,
   },
   logo: {
     id: "logo",
     type: "image",
     label: "Agency Logo",
-    x: 710,
-    y: 1185,
-    width: 244,
-    height: 65,
-    rx: 6,
+    x: 126,
+    y: 60,
+    width: 320,
+    height: 100,
+    rx: 16,
   },
   location: {
     id: "location",
@@ -46,39 +56,39 @@ export const getEkoItemBoxes = (hasSec: boolean): Record<string, FlierItemBox> =
     label: "Location",
     x: 126,
     y: 1010,
-    width: 360,
-    height: 40,
-    rx: 6,
+    width: 370,
+    height: 50,
+    rx: 8,
   },
   priceNGN: {
     id: "priceNGN",
     type: "text",
     label: "Price (NGN)",
     x: 126,
-    y: 1060,
-    width: 360,
+    y: 1065,
+    width: 370,
     height: 80,
-    rx: 10,
+    rx: 8,
   },
   propertyTitle: {
     id: "propertyTitle",
     type: "text",
     label: "Property Specs",
     x: 535,
-    y: 1020,
+    y: 1010,
     width: 420,
-    height: 120,
-    rx: 10,
+    height: 135,
+    rx: 8,
   },
   contact: {
     id: "contact",
     type: "text",
-    label: "Agency Contact",
-    x: 40,
-    y: 1210,
-    width: 1000,
-    height: 90,
-    rx: 10,
+    label: "Contact Information",
+    x: 126,
+    y: 1195,
+    width: 828,
+    height: 40,
+    rx: 6,
   },
 });
 
@@ -108,6 +118,7 @@ export function EkoTemplate({
   itemWrap,
   itemAlign,
   itemFontSizes,
+  itemScales,
 }: TemplateRenderProps) {
   const getTransform = (id: string, base?: string) => {
     const off = itemOffsets?.[id];
@@ -127,8 +138,23 @@ export function EkoTemplate({
   const locRaw = (data.location || "LEKKI PHASE 1").toUpperCase();
   const locWidth = itemWidths?.["location"] || 370;
   const isLocWrap = itemWrap?.["location"] !== false;
-  const locFontSize = itemFontSizes?.["location"] || 28;
-  const locLines = isLocWrap ? wrapSvgText(locRaw, locWidth, locFontSize * 0.58) : [locRaw];
+  const locScale = itemScales?.["location"] || 1.0;
+  const baseLocFontSize = itemFontSizes?.["location"] || 28;
+  const locFit = isLocWrap
+    ? fitSvgText(locRaw, locWidth, baseLocFontSize, {
+        scale: locScale,
+        maxLines: 3,
+        minFontSize: 14,
+        breakWords: true,
+      })
+    : {
+        lines: [locRaw],
+        fontSize: Math.max(14, Math.round(baseLocFontSize * locScale)),
+        lineHeight: Math.round(baseLocFontSize * locScale * 1.2),
+        totalHeight: Math.round(baseLocFontSize * locScale),
+      };
+  const locLines = locFit.lines;
+  const locFontSize = locFit.fontSize;
 
   const ekoSpecLines = (() => {
     const line1 = `${bedroomNum} BEDROOM ${(data.propertyType || "DUPLEX").toUpperCase()}`;
@@ -141,7 +167,10 @@ export function EkoTemplate({
     return [line1, "LUXURY FINISHES", "SERENE ENVIRONMENT"];
   })();
 
-  const ekoPriceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 10 ? 46 : rawPriceNaira.length > 7 ? 56 : 68);
+  const priceWidth = itemWidths?.["priceNGN"] || 370;
+  const priceScale = itemScales?.["priceNGN"] || 1.0;
+  const basePriceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 10 ? 46 : rawPriceNaira.length > 7 ? 56 : 68);
+  const ekoPriceFontSize = Math.max(20, Math.round(basePriceFontSize * priceScale));
 
   return (
     <g>
@@ -226,6 +255,8 @@ export function EkoTemplate({
         x="126"
         y={locLines.length > 1 ? 1042 - (locLines.length - 1) * (locFontSize + 4) : 1042}
         fontSize={locFontSize}
+        textLength={!isLocWrap && locRaw.length * (locFontSize * 0.58) > locWidth ? locWidth : undefined}
+        lengthAdjust={!isLocWrap && locRaw.length * (locFontSize * 0.58) > locWidth ? "spacingAndGlyphs" : undefined}
         fontWeight="700"
         fill="#FFFFFF"
         letterSpacing="2"
@@ -244,6 +275,8 @@ export function EkoTemplate({
         x="126"
         y="1132"
         fontSize={ekoPriceFontSize}
+        textLength={rawPriceNaira.length * (ekoPriceFontSize * 0.58) > priceWidth ? priceWidth : undefined}
+        lengthAdjust={rawPriceNaira.length * (ekoPriceFontSize * 0.58) > priceWidth ? "spacingAndGlyphs" : undefined}
         fontWeight="800"
         fill="#FFFFFF"
         letterSpacing="-0.5"

@@ -1,5 +1,5 @@
 import { PropertyData, AppSettings } from "../types/propkit";
-import { EMPTY_FIELD, FIXED_CONTACT } from "./constants";
+import { EMPTY_FIELD, FIXED_CONTACT, DEFAULT_SETTINGS } from "./constants";
 
 export function abbreviateNumber(num: number | null | undefined): string | null {
   if (num === null || num === undefined || isNaN(num)) return null;
@@ -301,8 +301,8 @@ export function extractDetailsLocally(briefText: string): PropertyData {
 
 export function generateCaption(
   data: PropertyData,
-  template: string,
-  settings: AppSettings
+  template: string = DEFAULT_SETTINGS.captionTemplate,
+  settings?: AppSettings
 ): string {
   const opening = `New listing from Buy 'n' Move In!`;
   const bedrooms = data.bedrooms ? String(data.bedrooms) : EMPTY_FIELD;
@@ -310,7 +310,8 @@ export function generateCaption(
   const location = data.location || EMPTY_FIELD;
   const description = data.description && data.description !== EMPTY_FIELD ? data.description : "";
   const priceNaira = formatNairaFull(data.priceNGN);
-  const priceUsd = formatUsd(data.priceNGN, settings.usdRate) || EMPTY_FIELD;
+  const effectiveUsdRate = settings?.usdRate || DEFAULT_SETTINGS.usdRate || 1450;
+  const priceUsd = formatUsd(data.priceNGN, effectiveUsdRate) || EMPTY_FIELD;
   const documentation = data.documentation || EMPTY_FIELD;
 
   return template

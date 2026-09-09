@@ -5,7 +5,7 @@ import { TemplateDefinition, TemplateRenderProps, FlierItemBox, FlierImageSlot, 
 import { BMI_LOGO_DATA_URL } from "../../utils/templateLogos";
 import { FIXED_CONTACT } from "../../utils/constants";
 import { formatPropertyTypeLines } from "../../utils/extractor";
-import { wrapSvgText } from "../../utils/textWrap";
+import { wrapSvgText, fitSvgText } from "../../utils/textWrap";
 
 const CANVAS_W = 1080;
 
@@ -156,6 +156,7 @@ export function BmiTemplate({
   itemWrap,
   itemAlign,
   itemFontSizes,
+  itemScales,
 }: TemplateRenderProps) {
   const getTransform = (id: string, base?: string) => {
     const off = itemOffsets?.[id];
@@ -176,22 +177,58 @@ export function BmiTemplate({
     data.features
   );
 
-  // Location wrapping & width
+  // Location wrapping, scaling & width
   const locWidth = itemWidths?.["location"] || 412.696;
   const isLocWrap = itemWrap?.["location"] !== false;
-  const locFontSize = itemFontSizes?.["location"] || (locationText.length > 24 ? 19 : locationText.length > 18 ? 22 : 25);
-  const locLines = isLocWrap ? wrapSvgText(locationText, locWidth - 70, locFontSize * 0.58) : [locationText];
+  const locScale = itemScales?.["location"] || 1.0;
+  const baseLocFontSize = itemFontSizes?.["location"] || (locationText.length > 24 ? 19 : locationText.length > 18 ? 22 : 25);
+  const locInnerWidth = Math.max(120, locWidth - 75);
 
-  // Documentation wrapping & width
+  const locFit = isLocWrap
+    ? fitSvgText(locationText, locInnerWidth, baseLocFontSize, {
+        scale: locScale,
+        maxLines: 3,
+        minFontSize: 13,
+        breakWords: true,
+      })
+    : {
+        lines: [locationText],
+        fontSize: Math.max(13, Math.round(baseLocFontSize * locScale)),
+        lineHeight: Math.round(baseLocFontSize * locScale * 1.2),
+        totalHeight: Math.round(baseLocFontSize * locScale),
+      };
+  const locLines = locFit.lines;
+  const locFontSize = locFit.fontSize;
+
+  // Documentation wrapping, scaling & width
   const docWidth = itemWidths?.["documentation"] || 440.734;
   const isDocWrap = itemWrap?.["documentation"] !== false;
-  const docFontSize = itemFontSizes?.["documentation"] || (docText.length > 28 ? 18 : 22);
+  const docScale = itemScales?.["documentation"] || 1.0;
+  const baseDocFontSize = itemFontSizes?.["documentation"] || (docText.length > 28 ? 17 : 21);
   const fullDocText = docText.startsWith("TITLE:") ? docText : `TITLE: ${docText}`;
-  const docLines = isDocWrap ? wrapSvgText(fullDocText, docWidth - 40, docFontSize * 0.58) : [fullDocText];
+  const docInnerWidth = Math.max(120, docWidth - 30);
 
-  // Price box width & size
+  const docFit = isDocWrap
+    ? fitSvgText(fullDocText, docInnerWidth, baseDocFontSize, {
+        scale: docScale,
+        maxLines: 2,
+        minFontSize: 12,
+        breakWords: true,
+      })
+    : {
+        lines: [fullDocText],
+        fontSize: Math.max(12, Math.round(baseDocFontSize * docScale)),
+        lineHeight: Math.round(baseDocFontSize * docScale * 1.2),
+        totalHeight: Math.round(baseDocFontSize * docScale),
+      };
+  const docLines = docFit.lines;
+  const docFontSize = docFit.fontSize;
+
+  // Price box width & scaling
   const priceWidth = itemWidths?.["priceNGN"] || 438;
-  const priceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 10 ? 46 : rawPriceNaira.length > 7 ? 54 : 62);
+  const priceScale = itemScales?.["priceNGN"] || 1.0;
+  const basePriceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 10 ? 46 : rawPriceNaira.length > 7 ? 54 : 62);
+  const priceFontSize = Math.max(18, Math.round(basePriceFontSize * priceScale));
 
   return (
     <g>
@@ -437,6 +474,8 @@ export function BmiTemplate({
             y={docLines.length > 1 ? 1152 : 1168}
             textAnchor="middle"
             fontSize={docFontSize}
+            textLength={!isDocWrap && fullDocText.length * (docFontSize * 0.58) > docInnerWidth ? docInnerWidth : undefined}
+            lengthAdjust={!isDocWrap && fullDocText.length * (docFontSize * 0.58) > docInnerWidth ? "spacingAndGlyphs" : undefined}
             fontWeight="900"
             fill="#1C3C6A"
             letterSpacing="2.5"
@@ -478,6 +517,8 @@ export function BmiTemplate({
             x="495"
             y={locLines.length > 1 ? 852 : 873}
             fontSize={locFontSize}
+            textLength={!isLocWrap && locationText.length * (locFontSize * 0.58) > locInnerWidth ? locInnerWidth : undefined}
+            lengthAdjust={!isLocWrap && locationText.length * (locFontSize * 0.58) > locInnerWidth ? "spacingAndGlyphs" : undefined}
             fontWeight="900"
             fill="#FFFFFF"
             letterSpacing="1.5"
@@ -523,6 +564,8 @@ export function BmiTemplate({
             y="995"
             textAnchor="middle"
             fontSize={priceFontSize}
+            textLength={rawPriceNaira.length * (priceFontSize * 0.58) > priceWidth - 70 ? priceWidth - 70 : undefined}
+            lengthAdjust={rawPriceNaira.length * (priceFontSize * 0.58) > priceWidth - 70 ? "spacingAndGlyphs" : undefined}
             fontWeight="900"
             fill="#1C3C6A"
             className="font-montserrat"
