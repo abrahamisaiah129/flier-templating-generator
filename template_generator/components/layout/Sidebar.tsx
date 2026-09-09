@@ -58,10 +58,11 @@ export function Sidebar({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer active:scale-95"
+            className="min-w-[44px] min-h-[44px] p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer active:scale-95 flex items-center justify-center touch-manipulation"
             title="Close menu"
+            aria-label="Close navigation menu"
           >
-            <X size={20} />
+            <X size={22} />
           </button>
         )}
       </div>
@@ -122,7 +123,7 @@ export function Sidebar({
 
       {/* Mobile Slide-in Drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 w-64 bg-[#1B494E] z-50 md:hidden flex flex-col shadow-2xl transition-transform duration-200 ease-out ${
+        className={`fixed inset-y-0 left-0 w-72 sm:w-80 max-w-[85vw] bg-[#1B494E] z-50 md:hidden flex flex-col shadow-2xl transition-transform duration-200 ease-out ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Mobile Navigation"

@@ -31,7 +31,7 @@ export function RecentPropertiesGrid({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {properties.slice(0, 3).map((p) => {
           const primaryImg = p.images?.find((img) => img.id === p.primaryId) || p.images?.[0];
           const statusColor = (STATUS_COLORS as Record<string, string>)[p.status] || "#64748B";
@@ -40,9 +40,9 @@ export function RecentPropertiesGrid({
             <div
               key={p.id}
               onClick={() => onOpenProperty(p)}
-              className="group bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-[#1B494E]/40 transition-all duration-200 cursor-pointer flex flex-col"
+              className="group bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-[#1B494E]/40 transition-all duration-200 cursor-pointer flex flex-col touch-manipulation"
             >
-              <div className="h-48 w-full bg-[#E6EEEE]/50 relative overflow-hidden flex items-center justify-center">
+              <div className="h-44 sm:h-48 w-full bg-[#E6EEEE]/50 relative overflow-hidden flex items-center justify-center">
                 {primaryImg ? (
                   <img
                     src={primaryImg.url}

@@ -52,27 +52,28 @@ export function SettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-      <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs">
+      <div className="bg-white rounded-3xl w-full max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur-xs p-6 border-b border-slate-100 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-xs p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between z-10">
           <div>
-            <h2 className="text-xl font-extrabold text-[#1B494E]">Settings & Preferences</h2>
+            <h2 className="text-lg sm:text-xl font-extrabold text-[#1B494E]">Settings & Preferences</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Customize brand assets, currency conversion, and caption templates.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer touch-manipulation min-w-[40px] min-h-[40px]"
+            aria-label="Close settings"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* USD Rate */}
-          <div className="bg-[#F4F9F9] rounded-2xl p-5 border border-slate-200/80">
+          <div className="bg-[#F4F9F9] rounded-2xl p-4 sm:p-5 border border-slate-200/80">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign size={18} className="text-[#1B494E]" />
               <label className="text-xs font-bold uppercase tracking-wider text-[#1B494E]">
@@ -88,7 +89,7 @@ export function SettingsModal({
                 type="number"
                 value={settings.usdRate}
                 onChange={(e) => handleRateChange(e.target.value)}
-                className="w-32 py-2 px-3 rounded-lg border border-slate-300 font-bold text-[#1B494E] bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20"
+                className="w-32 py-2 px-3 rounded-lg border border-slate-300 font-bold text-base sm:text-sm text-[#1B494E] bg-white focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20"
               />
             </div>
           </div>
@@ -140,7 +141,7 @@ export function SettingsModal({
           </div>
 
           {/* Caption Template */}
-          <div className="bg-[#F4F9F9] rounded-2xl p-5 border border-slate-200/80">
+          <div className="bg-[#F4F9F9] rounded-2xl p-4 sm:p-5 border border-slate-200/80">
             <div className="flex items-center gap-2 mb-2">
               <FileText size={18} className="text-[#1B494E]" />
               <label className="text-xs font-bold uppercase tracking-wider text-[#1B494E]">
@@ -150,8 +151,8 @@ export function SettingsModal({
             <textarea
               value={settings.captionTemplate}
               onChange={(e) => handleTemplateChange(e.target.value)}
-              rows={8}
-              className="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-700 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20"
+              rows={6}
+              className="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-base sm:text-xs font-mono text-slate-700 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20 resize-y"
             />
             <p className="text-[11px] text-slate-400 mt-2">
               Tags: {"{{opening}}, {{bedrooms}}, {{property_type}}, {{location}}, {{price_naira}}, {{price_usd}}, {{documentation}}, {{phone}}, {{website}}, {{email}}, {{instagram}}"}
@@ -159,7 +160,7 @@ export function SettingsModal({
           </div>
 
           {/* OpenAI API Key for SVG to Template Generator */}
-          <div className="bg-[#F4F9F9] rounded-2xl p-5 border border-slate-200/80">
+          <div className="bg-[#F4F9F9] rounded-2xl p-4 sm:p-5 border border-slate-200/80">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles size={18} className="text-[#1B494E]" />
               <label className="text-xs font-bold uppercase tracking-wider text-[#1B494E]">
@@ -174,19 +175,19 @@ export function SettingsModal({
               value={settings.openaiApiKey || ""}
               onChange={(e) => onSaveSettings({ ...settings, openaiApiKey: e.target.value })}
               placeholder="sk-..."
-              className="w-full py-2.5 px-3.5 rounded-xl bg-white border border-slate-200 text-sm font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20"
+              className="w-full py-2.5 px-3.5 rounded-xl bg-white border border-slate-200 text-base sm:text-sm font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20"
             />
           </div>
 
           {/* Fixed Footer Constants */}
-          <div className="bg-[#F4F9F9] rounded-2xl p-5 border border-slate-200/80">
+          <div className="bg-[#F4F9F9] rounded-2xl p-4 sm:p-5 border border-slate-200/80">
             <div className="flex items-center gap-2 mb-2">
               <Phone size={18} className="text-[#1B494E]" />
               <label className="text-xs font-bold uppercase tracking-wider text-[#1B494E]">
                 Company Contact Constants
               </label>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-xs text-slate-600 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs text-slate-600 pt-1">
               <div>📞 <strong>Phone:</strong> {FIXED_CONTACT.phone}</div>
               <div>📸 <strong>IG:</strong> {FIXED_CONTACT.instagram}</div>
               <div>🌐 <strong>Web:</strong> {FIXED_CONTACT.website}</div>
@@ -196,10 +197,10 @@ export function SettingsModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-6 border-t border-slate-100 flex justify-end">
+        <div className="p-4 sm:p-6 border-t border-slate-100 flex justify-end">
           <button
             onClick={onClose}
-            className="px-6 py-2.5 rounded-xl bg-[#1B494E] hover:bg-[#14383C] text-white text-xs font-bold transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#1B494E] hover:bg-[#14383C] text-white text-xs font-bold transition-colors cursor-pointer min-h-[44px] touch-manipulation flex items-center justify-center"
           >
             Close Settings
           </button>

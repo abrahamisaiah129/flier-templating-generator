@@ -76,13 +76,13 @@ export function HistoryView({
   }, [properties, searchQuery, statusFilter]);
 
   return (
-    <div className="max-w-6xl mx-auto py-4 px-2 sm:px-4">
+    <div className="max-w-6xl mx-auto py-2 sm:py-4 px-1 sm:px-4">
       {/* Header */}
-      <div className="mb-7">
-        <h1 className="text-3xl sm:text-[34px] font-extrabold text-[#1B494E] tracking-tight">
+      <div className="mb-6 sm:mb-7">
+        <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-extrabold text-[#1B494E] tracking-tight">
           Property History
         </h1>
-        <p className="text-slate-600 text-sm sm:text-base mt-2">
+        <p className="text-slate-600 text-xs sm:text-sm sm:text-base mt-2">
           Everything your desk has received, verified, built &amp; published.
         </p>
       </div>
@@ -98,7 +98,7 @@ export function HistoryView({
 
       {/* Property Cards Grid */}
       {filteredProperties.length === 0 ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+        <div className="p-8 sm:p-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
           <ImageIcon size={36} className="mx-auto text-slate-400 mb-3" />
           <h3 className="font-bold text-slate-700 text-base">No properties found</h3>
           <p className="text-slate-500 text-xs mt-1">
@@ -107,13 +107,13 @@ export function HistoryView({
           <button
             type="button"
             onClick={onNewProperty}
-            className="mt-4 px-4 py-2 rounded-lg bg-[#1B494E] text-white text-xs font-bold hover:bg-[#14383C] transition-colors"
+            className="mt-4 px-4 py-2.5 rounded-xl bg-[#1B494E] text-white text-xs font-bold hover:bg-[#14383C] transition-colors cursor-pointer min-h-[40px] touch-manipulation"
           >
             Create Property
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredProperties.map((p) => (
             <HistoryPropertyCard
               key={p.id}

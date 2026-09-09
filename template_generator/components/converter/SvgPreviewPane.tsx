@@ -24,7 +24,7 @@ export function SvgPreviewPane({
   }, [svgMarkup]);
 
   return (
-    <div className="flex flex-col h-[520px] bg-slate-50 rounded-2xl border border-slate-200/80 p-4">
+    <div className="flex flex-col min-h-[320px] sm:min-h-[420px] lg:h-[520px] bg-slate-50 rounded-2xl border border-slate-200/80 p-3 sm:p-4">
       <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-200/80">
         <div className="flex items-center gap-2">
           <Eye size={16} className="text-[#1B494E]" />

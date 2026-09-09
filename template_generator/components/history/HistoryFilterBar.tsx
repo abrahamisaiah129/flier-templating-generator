@@ -27,7 +27,7 @@ export function HistoryFilterBar({
   onNewProperty,
 }: HistoryFilterBarProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-3 mb-8">
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6 sm:mb-8">
       {/* Search Input */}
       <div className="relative flex-1 w-full">
         <Search
@@ -38,21 +38,22 @@ export function HistoryFilterBar({
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
-          placeholder="Search by title, location, type, or documentation..."
-          className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-slate-200 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20 shadow-xs transition-all"
+          placeholder="Search by title, location, type..."
+          className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-slate-200 text-base sm:text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1B494E]/20 shadow-xs transition-all"
         />
       </div>
 
-      {/* Status Filter Dropdown / Pills */}
-      <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-        <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200 shadow-xs">
+      {/* Filter Controls Row */}
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Status Filter Dropdown / Pills */}
+        <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto pb-1 sm:pb-1 scrollbar-none flex-1 sm:flex-none">
           <Filter size={15} className="text-slate-400 ml-2 mr-1 flex-shrink-0" />
           {STATUS_OPTIONS.map((opt) => (
             <button
               key={opt.id}
               type="button"
               onClick={() => onStatusFilterChange(opt.id)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap touch-manipulation min-h-[36px] ${
                 statusFilter === opt.id
                   ? "bg-[#1B494E] text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -63,12 +64,13 @@ export function HistoryFilterBar({
           ))}
         </div>
 
+        {/* New Property CTA */}
         <button
           type="button"
           onClick={onNewProperty}
-          className="py-3 px-4 rounded-2xl bg-[#F26522] hover:bg-[#d95315] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-orange-950/20 cursor-pointer whitespace-nowrap flex-shrink-0"
+          className="py-3 px-4 rounded-2xl bg-[#F26522] hover:bg-[#d95315] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-orange-950/20 cursor-pointer whitespace-nowrap flex-shrink-0 touch-manipulation min-h-[44px]"
         >
-          <PlusCircle size={15} />
+          <PlusCircle size={16} />
           <span>New Property</span>
         </button>
       </div>

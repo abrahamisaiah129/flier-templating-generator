@@ -242,13 +242,13 @@ export function NewPropertyView({
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-4 px-2 sm:px-4">
+    <div className="max-w-3xl mx-auto py-2 sm:py-4 px-1 sm:px-4">
       {/* Page Title & Subtitle */}
       <div className="mb-6">
-        <h1 className="text-3xl sm:text-[34px] font-extrabold text-[#1B494E] tracking-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-extrabold text-[#1B494E] tracking-tight">
           Start with the raw brief
         </h1>
-        <p className="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">
+        <p className="text-slate-600 text-xs sm:text-sm sm:text-base mt-2 leading-relaxed">
           Paste the message, PDF text, or notes exactly as they arrived. We&apos;ll structure it without losing the source.
         </p>
       </div>
@@ -265,7 +265,7 @@ export function NewPropertyView({
 
       {/* Upload Property Image Section */}
       <div className="mb-7">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-2">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
             Upload Property Image
           </label>
@@ -315,7 +315,7 @@ export function NewPropertyView({
         type="button"
         onClick={handleSubmit}
         disabled={extracting}
-        className="w-full py-4 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-extrabold text-sm tracking-wide shadow-lg shadow-orange-950/20 transition-all duration-150 ease-out active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2.5"
+        className="w-full py-4 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-extrabold text-sm sm:text-base tracking-wide shadow-lg shadow-orange-950/20 transition-all duration-150 ease-out active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2.5 min-h-[50px] touch-manipulation"
       >
         {extracting ? (
           <>

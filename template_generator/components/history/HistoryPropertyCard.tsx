@@ -40,10 +40,10 @@ export function HistoryPropertyCard({
   return (
     <div
       onClick={() => onOpenProperty(p)}
-      className="group bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-[#1B494E]/40 transition-all duration-200 cursor-pointer flex flex-col"
+      className="group bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-[#1B494E]/40 transition-all duration-200 cursor-pointer flex flex-col touch-manipulation"
     >
       {/* Image Preview Container */}
-      <div className="h-52 w-full bg-[#E6EEEE]/50 relative overflow-hidden flex items-center justify-center">
+      <div className="h-44 sm:h-52 w-full bg-[#E6EEEE]/50 relative overflow-hidden flex items-center justify-center">
         {primaryImg ? (
           <img
             src={primaryImg.url}
@@ -73,7 +73,7 @@ export function HistoryPropertyCard({
               e.stopPropagation();
               onOpenTemplateSelector(p.id);
             }}
-            className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-black/75 hover:bg-black text-white backdrop-blur-xs flex items-center gap-1.5 transition-transform duration-150 ease-out active:scale-95 cursor-pointer border border-white/15 hover:border-white/40 shadow-xs group/tpl"
+            className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-black/75 hover:bg-black text-white backdrop-blur-xs flex items-center gap-1.5 transition-transform duration-150 ease-out active:scale-95 cursor-pointer border border-white/15 hover:border-white/40 shadow-xs group/tpl touch-manipulation min-h-[26px]"
             title="Click to switch flyer template"
           >
             {tpl.isCustom ? (
@@ -108,7 +108,7 @@ export function HistoryPropertyCard({
               onDeleteProperty(p.id);
             }
           }}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10 touch-manipulation"
           title="Delete property"
         >
           <Trash2 size={13} />

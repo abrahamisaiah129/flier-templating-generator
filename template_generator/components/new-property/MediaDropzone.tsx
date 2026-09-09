@@ -22,7 +22,7 @@ export function MediaDropzone({
         e.preventDefault();
         onFilesSelected(e.dataTransfer.files);
       }}
-      className="border-2 border-dashed border-slate-300 hover:border-[#1B494E]/50 rounded-xl p-8 bg-white/50 hover:bg-white text-center cursor-pointer transition-all group"
+      className="border-2 border-dashed border-slate-300 hover:border-[#1B494E]/50 rounded-xl p-6 sm:p-8 bg-white/50 hover:bg-white text-center cursor-pointer transition-all group touch-manipulation"
     >
       <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#E6EEEE]/80 flex items-center justify-center text-slate-600 group-hover:text-[#1B494E] group-hover:scale-105 transition-all">
         <UploadCloud size={24} />

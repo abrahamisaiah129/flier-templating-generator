@@ -81,7 +81,7 @@ export function PropertyReviewStep({
             value={data.propertyTitle || ""}
             onFocus={() => onSelectCanvasItem("propertyTitle", "text")}
             onChange={(e) => onUpdateField("propertyTitle", e.target.value)}
-            className={`w-full py-2.5 px-3.5 rounded-lg border text-sm font-semibold transition-all focus:outline-none ${
+            className={`w-full py-2.5 px-3.5 rounded-lg border text-base sm:text-sm font-semibold transition-all focus:outline-none ${
               selectedCanvasItemId === "propertyTitle"
                 ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
                 : "border-slate-200 focus:ring-2 focus:ring-[#1B494E]/20 focus:border-[#1B494E]"
@@ -102,7 +102,7 @@ export function PropertyReviewStep({
               value={data.propertyType || ""}
               onFocus={() => onSelectCanvasItem("propertyTitle", "text")}
               onChange={(e) => onUpdateField("propertyType", e.target.value)}
-              className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
+              className={`w-full py-2.5 px-3.5 rounded-lg border text-base sm:text-sm transition-all focus:outline-none ${
                 selectedCanvasItemId === "propertyTitle"
                   ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
                   : isMissing(data.propertyType)
@@ -123,7 +123,7 @@ export function PropertyReviewStep({
               value={data.location || ""}
               onFocus={() => onSelectCanvasItem("location", "text")}
               onChange={(e) => onUpdateField("location", e.target.value)}
-              className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
+              className={`w-full py-2.5 px-3.5 rounded-lg border text-base sm:text-sm transition-all focus:outline-none ${
                 selectedCanvasItemId === "location"
                   ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
                   : isMissing(data.location)
@@ -149,7 +149,7 @@ export function PropertyReviewStep({
                   e.target.value ? parseInt(e.target.value, 10) : null
                 )
               }
-              className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
+              className={`w-full py-2.5 px-3.5 rounded-lg border text-base sm:text-sm transition-all focus:outline-none ${
                 selectedCanvasItemId === "bedrooms"
                   ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
                   : isMissing(data.bedrooms)
@@ -175,7 +175,7 @@ export function PropertyReviewStep({
                   e.target.value ? parseInt(e.target.value, 10) : null
                 )
               }
-              className={`w-full py-2.5 px-3.5 rounded-lg border text-sm font-bold transition-all focus:outline-none ${
+              className={`w-full py-2.5 px-3.5 rounded-lg border text-base sm:text-sm font-bold transition-all focus:outline-none ${
                 selectedCanvasItemId === "priceNGN"
                   ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 text-[#F26522] shadow-xs"
                   : isMissing(data.priceNGN)
@@ -196,7 +196,7 @@ export function PropertyReviewStep({
               value={data.documentation || ""}
               onFocus={() => onSelectCanvasItem("documentation", "text")}
               onChange={(e) => onUpdateField("documentation", e.target.value)}
-              className={`w-full py-2.5 px-3.5 rounded-lg border text-sm transition-all focus:outline-none ${
+              className={`w-full py-2.5 px-3.5 rounded-lg border text-base sm:text-sm transition-all focus:outline-none ${
                 selectedCanvasItemId === "documentation"
                   ? "ring-2 ring-[#F26522] border-[#F26522] bg-orange-50/20 shadow-xs"
                   : isMissing(data.documentation)
@@ -333,7 +333,7 @@ export function PropertyReviewStep({
         <button
           type="button"
           onClick={onProceedToKit}
-          className="w-full py-4 rounded-2xl bg-[#F26522] hover:bg-[#d95315] text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-orange-950/20 transition-transform duration-120 cursor-pointer active:scale-[0.99]"
+          className="w-full py-4 rounded-2xl bg-[#F26522] hover:bg-[#d95315] text-white font-black text-sm sm:text-base uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-orange-950/20 transition-transform duration-120 cursor-pointer active:scale-[0.99] min-h-[52px] touch-manipulation"
         >
           <span>Generate Marketing Kit &amp; Flyers</span>
           <ArrowRight size={18} />

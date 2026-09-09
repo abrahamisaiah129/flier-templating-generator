@@ -122,12 +122,12 @@ export function MarketingKitStep({
   onOpenTemplateModal,
 }: MarketingKitStepProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
       {/* LEFT COLUMN: ACTIONS, BATCH EXPORT & CAPTION */}
-      <div className="lg:col-span-7 space-y-6">
+      <div className="lg:col-span-7 space-y-6 order-last lg:order-first">
         {/* Export Actions Card */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-xs space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-[#1B494E]">
                 High-Resolution Flyer Export
@@ -137,11 +137,11 @@ export function MarketingKitStep({
               </p>
             </div>
             {/* Resolution Selector */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600 self-start sm:self-auto">
               <button
                 type="button"
                 onClick={() => onSetExportScale(1)}
-                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer touch-manipulation ${
                   exportScale === 1 ? "bg-white text-[#1B494E] shadow-xs" : "hover:text-slate-900"
                 }`}
               >
@@ -150,7 +150,7 @@ export function MarketingKitStep({
               <button
                 type="button"
                 onClick={() => onSetExportScale(2)}
-                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer touch-manipulation ${
                   exportScale === 2 ? "bg-white text-[#1B494E] shadow-xs" : "hover:text-slate-900"
                 }`}
               >
@@ -164,7 +164,7 @@ export function MarketingKitStep({
               type="button"
               onClick={() => onDownloadPng()}
               disabled={downloading || batchDownloading}
-              className="py-3.5 px-4 rounded-xl bg-[#F26522] hover:bg-[#d95315] text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-orange-900/10 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50"
+              className="py-3.5 px-4 rounded-xl bg-[#F26522] hover:bg-[#d95315] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-orange-900/10 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50 min-h-[48px] touch-manipulation w-full"
             >
               {downloading ? (
                 <>
@@ -182,7 +182,7 @@ export function MarketingKitStep({
             <button
               type="button"
               onClick={onOpenTemplateModal}
-              className="py-3.5 px-4 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#1B494E] border border-teal-200 font-black text-xs flex items-center justify-center gap-2 transition-transform duration-120 cursor-pointer active:scale-[0.98]"
+              className="py-3.5 px-4 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#1B494E] border border-teal-200 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] min-h-[48px] touch-manipulation w-full"
             >
               <Palette size={16} />
               <span>Change Template Style</span>
@@ -208,7 +208,7 @@ export function MarketingKitStep({
                   type="button"
                   onClick={onDownloadAllZip}
                   disabled={batchDownloading || downloading}
-                  className="py-3 px-4 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#F26522] border border-orange-200 font-bold text-xs flex items-center justify-center gap-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                  className="py-3 px-4 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#F26522] border border-orange-200 font-bold text-xs flex items-center justify-center gap-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50 min-h-[44px] touch-manipulation w-full"
                 >
                   <FolderArchive size={16} />
                   <span>Download All ({localImages.length}) as ZIP</span>
@@ -217,7 +217,7 @@ export function MarketingKitStep({
                   type="button"
                   onClick={onDownloadAllSeparate}
                   disabled={batchDownloading || downloading}
-                  className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                  className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] disabled:opacity-50 min-h-[44px] touch-manipulation w-full"
                 >
                   <Download size={16} />
                   <span>Download All Separately</span>
@@ -235,7 +235,7 @@ export function MarketingKitStep({
       </div>
 
       {/* RIGHT COLUMN: LIVE FLYER SVG CANVAS & TOOLBAR */}
-      <div className="lg:col-span-5 sticky top-20 space-y-3">
+      <div className="lg:col-span-5 space-y-3 order-first lg:order-last lg:sticky lg:top-20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-black uppercase tracking-wider text-[#1B494E]">
@@ -282,7 +282,7 @@ export function MarketingKitStep({
             </div>
 
             {/* Thumbnail preview strip */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-none -mx-1 px-1">
               {localImages.map((img, idx) => {
                 const isActive = idx === safeActiveIndex;
                 return (
@@ -290,7 +290,7 @@ export function MarketingKitStep({
                     key={img.id || idx}
                     type="button"
                     onClick={() => onSelectImageIndex(idx)}
-                    className={`relative flex-shrink-0 w-12 h-14 rounded-lg overflow-hidden border-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] ${
+                    className={`relative flex-shrink-0 w-12 h-14 rounded-lg overflow-hidden border-2 transition-transform duration-120 cursor-pointer active:scale-[0.98] touch-manipulation ${
                       isActive
                         ? "border-[#F26522] ring-2 ring-orange-500/30 scale-105 shadow-xs"
                         : "border-slate-200 opacity-70 hover:opacity-100"

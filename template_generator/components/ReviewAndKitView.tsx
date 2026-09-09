@@ -323,20 +323,20 @@ export function ReviewAndKitView({
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-4 px-2 sm:px-4">
+    <div className="max-w-6xl mx-auto py-2 sm:py-4 px-1 sm:px-4">
       {/* Top Breadcrumb & Step Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 sm:mb-6">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={step === "kit" ? () => setStep("review") : onBackToNew}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#1B494E] transition-colors cursor-pointer active:scale-[0.98]"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#1B494E] transition-colors cursor-pointer active:scale-[0.98] touch-manipulation min-h-[36px]"
           >
             <ChevronLeft size={16} />
             <span>{step === "kit" ? "Back to Editor" : "Back to Brief"}</span>
           </button>
           <span className="text-slate-300">/</span>
-          <h2 className="text-xl font-extrabold text-[#1B494E]">
+          <h2 className="text-lg sm:text-xl font-extrabold text-[#1B494E]">
             {step === "review" ? "Verify & Customize Flyer" : "Property Marketing Kit"}
           </h2>
         </div>
@@ -345,7 +345,7 @@ export function ReviewAndKitView({
           <button
             type="button"
             onClick={onDone}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#1B494E] text-xs font-bold transition-all duration-150 cursor-pointer active:scale-[0.98]"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#1B494E] text-xs font-bold transition-all duration-150 cursor-pointer active:scale-[0.98] touch-manipulation min-h-[38px] flex items-center justify-center"
           >
             Done · Back to Dashboard
           </button>
@@ -356,11 +356,11 @@ export function ReviewAndKitView({
       {propertiesData.length > 1 && (
         <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200/90 shadow-xs mb-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
               <span className="text-xs font-black uppercase tracking-wider text-[#1B494E] px-1">
                 Select Property:
               </span>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1 w-full sm:w-auto">
                 {propertiesData.map((prop, pIdx) => {
                   const isActive = safePropIndex === pIdx;
                   return (
@@ -368,7 +368,7 @@ export function ReviewAndKitView({
                       key={pIdx}
                       type="button"
                       onClick={() => handleSelectPropertyTab(pIdx)}
-                      className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all duration-150 cursor-pointer ${
+                      className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all duration-150 cursor-pointer shrink-0 touch-manipulation min-h-[38px] ${
                         isActive
                           ? "bg-[#1B494E] text-white shadow-sm ring-2 ring-[#1B494E]/20"
                           : "bg-slate-100 hover:bg-slate-200/80 text-slate-700"

@@ -195,7 +195,7 @@ export function FlyerCanvas({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl shadow-xl border border-slate-200/80 bg-white ${className}`}
+      className={`relative overflow-hidden rounded-2xl shadow-xl border border-slate-200/80 bg-white w-full max-w-[420px] sm:max-w-[480px] lg:max-w-none mx-auto ${className}`}
     >
       <svg
         ref={svgRef}
@@ -203,7 +203,7 @@ export function FlyerCanvas({
         width="100%"
         xmlns="http://www.w3.org/2000/svg"
         xmlnsXlink="http://www.w3.org/1999/xlink"
-        className={`block w-full h-auto select-none ${isDragging ? "cursor-grabbing" : isResizing ? "cursor-ew-resize" : "cursor-default"}`}
+        className={`block w-full h-auto select-none touch-manipulation ${isDragging ? "cursor-grabbing" : isResizing ? "cursor-ew-resize" : "cursor-default"}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

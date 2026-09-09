@@ -46,25 +46,25 @@ export function SvgUploader({
   onGenerate,
 }: SvgUploaderProps) {
   return (
-    <div className="flex flex-col h-[520px]">
-      <div className="flex items-center justify-between pb-3 mb-2">
+    <div className="flex flex-col min-h-[320px] sm:min-h-[420px] lg:h-[520px]">
+      <div className="flex items-center justify-between pb-3 mb-2 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <FileCode2 size={17} className="text-[#F26522]" />
           <span className="font-bold text-sm text-[#1B494E]">Raw SVG Code</span>
           {svgCode && (
             <span className="text-[11px] font-semibold text-slate-400">
-              ({svgCode.length} characters)
+              ({svgCode.length} chars)
             </span>
           )}
         </div>
 
         {/* Action Shortcuts */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             title="Upload an .svg or .txt vector file"
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#1B494E] border border-teal-200/80 flex items-center gap-1.5 cursor-pointer"
+            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#1B494E] border border-teal-200/80 flex items-center gap-1.5 cursor-pointer touch-manipulation min-h-[34px]"
           >
             <UploadCloud size={13} className="text-[#1B494E]" />
             <span>Upload SVG</span>
@@ -85,7 +85,7 @@ export function SvgUploader({
           <button
             type="button"
             onClick={onPasteClipboard}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 cursor-pointer"
+            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 cursor-pointer touch-manipulation min-h-[34px]"
           >
             <ClipboardPaste size={13} />
             <span>Paste</span>
@@ -93,7 +93,7 @@ export function SvgUploader({
           <button
             type="button"
             onClick={onLoadSample}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-[#F26522] flex items-center gap-1.5 cursor-pointer"
+            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-[#F26522] flex items-center gap-1.5 cursor-pointer touch-manipulation min-h-[34px]"
           >
             <Sparkles size={13} />
             <span>Sample</span>
@@ -102,7 +102,7 @@ export function SvgUploader({
             <button
               type="button"
               onClick={onClear}
-              className="text-xs font-semibold p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              className="text-xs font-semibold p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer touch-manipulation min-h-[34px] min-w-[34px] flex items-center justify-center"
             >
               <Trash2 size={14} />
             </button>
@@ -165,7 +165,7 @@ export function SvgUploader({
           type="button"
           onClick={onGenerate}
           disabled={loading || !svgCode.trim()}
-          className="w-full py-3.5 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-bold text-sm tracking-wide flex items-center justify-center gap-2.5 shadow-md shadow-orange-600/20 transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full py-4 rounded-xl bg-[#F26522] hover:bg-[#D95315] text-white font-bold text-sm tracking-wide flex items-center justify-center gap-2.5 shadow-md shadow-orange-600/20 transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer min-h-[50px] touch-manipulation"
         >
           {loading ? (
             <>

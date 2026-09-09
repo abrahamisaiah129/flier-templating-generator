@@ -57,11 +57,11 @@ export function CanvasInspectorToolbar({
   return (
     <div className="bg-[#1B494E] text-white p-3 rounded-2xl shadow-lg border border-teal-700/50 space-y-2.5 transition-all">
       {/* Row 1: Header / Selection indicator & Position Offset */}
-      <div className="flex items-center justify-between gap-3 text-xs">
+      <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
         <div className="flex items-center gap-2 font-bold min-w-0">
           <span className="w-2.5 h-2.5 rounded-full bg-[#F26522] animate-pulse flex-shrink-0" />
-          <span className="text-teal-200">Selected:</span>
-          <span className="text-white truncate font-extrabold">
+          <span className="text-teal-200 text-[11px]">Selected:</span>
+          <span className="text-white truncate font-extrabold max-w-[120px] sm:max-w-none">
             {currentItemDefaultBox?.label || selectedCanvasItemId}
           </span>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 uppercase tracking-wider text-teal-300 font-bold">
@@ -69,10 +69,10 @@ export function CanvasInspectorToolbar({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {/* Position Delta Offset Indicator */}
           {currentOffset && (currentOffset.dx !== 0 || currentOffset.dy !== 0) && (
-            <div className="flex items-center gap-1.5 bg-black/25 px-2 py-0.5 rounded-lg border border-white/10">
+            <div className="flex items-center gap-1 bg-black/25 px-2 py-0.5 rounded-lg border border-white/10">
               <span className="text-[10px] text-teal-200 font-bold flex items-center gap-1">
                 <Move size={11} />
                 <span>
@@ -83,11 +83,11 @@ export function CanvasInspectorToolbar({
               <button
                 type="button"
                 onClick={onResetActiveItemPosition}
-                className="ml-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                className="ml-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer touch-manipulation min-h-[28px]"
                 title="Reset element to original template position"
               >
                 <RotateCcw size={10} />
-                <span>Reset Pos</span>
+                <span>Reset</span>
               </button>
             </div>
           )}
@@ -96,7 +96,7 @@ export function CanvasInspectorToolbar({
           <button
             type="button"
             onClick={onDeselect}
-            className="p-1 rounded-md text-teal-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-teal-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer touch-manipulation min-w-[32px] min-h-[32px] flex items-center justify-center"
             title="Deselect element"
           >
             ✕
@@ -117,7 +117,7 @@ export function CanvasInspectorToolbar({
               <button
                 type="button"
                 onClick={() => onStepItemWidth(selectedCanvasItemId, -20)}
-                className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 touch-manipulation"
                 title="Narrow text box width (-20px)"
               >
                 <Minus size={12} />
@@ -125,7 +125,7 @@ export function CanvasInspectorToolbar({
               <button
                 type="button"
                 onClick={() => onStepItemWidth(selectedCanvasItemId, 20)}
-                className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95"
+                className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95 touch-manipulation"
                 title="Widen text box width (+20px)"
               >
                 <Plus size={12} />
@@ -136,7 +136,7 @@ export function CanvasInspectorToolbar({
             <button
               type="button"
               onClick={() => onToggleItemWrap(selectedCanvasItemId)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 touch-manipulation min-h-[30px] ${
                 isItemWrapActive
                   ? "bg-emerald-600 hover:bg-emerald-500 text-white ring-1 ring-emerald-400"
                   : "bg-white/10 hover:bg-white/20 text-slate-300"
@@ -160,7 +160,7 @@ export function CanvasInspectorToolbar({
               <button
                 type="button"
                 onClick={() => onStepItemFontSize(selectedCanvasItemId, -2)}
-                className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 touch-manipulation"
                 title="Decrease font size (-2px)"
               >
                 <Minus size={12} />
@@ -168,7 +168,7 @@ export function CanvasInspectorToolbar({
               <button
                 type="button"
                 onClick={() => onStepItemFontSize(selectedCanvasItemId, 2)}
-                className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95"
+                className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95 touch-manipulation"
                 title="Increase font size (+2px)"
               >
                 <Plus size={12} />
@@ -184,7 +184,7 @@ export function CanvasInspectorToolbar({
               <button
                 type="button"
                 onClick={() => onStepItemScale(selectedCanvasItemId, -0.1)}
-                className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 touch-manipulation"
                 title="Scale text down (-10%)"
               >
                 <Minus size={12} />
@@ -192,7 +192,7 @@ export function CanvasInspectorToolbar({
               <button
                 type="button"
                 onClick={() => onStepItemScale(selectedCanvasItemId, 0.1)}
-                className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95"
+                className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95 touch-manipulation"
                 title="Scale text up (+10%)"
               >
                 <Plus size={12} />
@@ -203,7 +203,7 @@ export function CanvasInspectorToolbar({
             <button
               type="button"
               onClick={onAutoFitActiveItem}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 bg-[#F26522] hover:bg-[#d95315] text-white"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 bg-[#F26522] hover:bg-[#d95315] text-white touch-manipulation min-h-[30px]"
               title="Automatically calculate font size and wrapping to perfectly fit boundaries"
             >
               <Zap size={13} />

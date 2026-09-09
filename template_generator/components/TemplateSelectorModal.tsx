@@ -79,7 +79,7 @@ export function TemplateSelectorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-150"
@@ -87,9 +87,9 @@ export function TemplateSelectorModal({
       />
 
       {/* Modal Card */}
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden z-10 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#1B494E]/10 text-[#1B494E] flex items-center justify-center shrink-0">
               <Layout size={20} />
@@ -104,7 +104,7 @@ export function TemplateSelectorModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer touch-manipulation"
             title="Close modal"
           >
             <X size={18} />
@@ -191,16 +191,16 @@ export function TemplateSelectorModal({
                   <div
                     key={tmpl.id}
                     onClick={() => handleSelect(tmpl.id)}
-                    className={`relative p-4 rounded-2xl border-2 text-left cursor-pointer transition-transform duration-150 ease-out active:scale-[0.98] group flex flex-col justify-between ${
+                    className={`relative p-4 rounded-2xl border-2 text-left cursor-pointer transition-transform duration-150 ease-out active:scale-[0.98] group flex flex-col justify-between overflow-hidden min-w-0 ${
                       isSelected
                         ? "border-[#1B494E] bg-emerald-50/20 ring-2 ring-[#1B494E]/20 shadow-md"
                         : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 shadow-xs"
                     }`}
                   >
-                    <div>
+                    <div className="min-w-0">
                       {/* Top Header inside Card */}
-                      <div className="flex items-center justify-between gap-2 mb-2.5">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-2 mb-2.5 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <span
                             className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs"
                             style={{ backgroundColor: tmpl.themeColor }}
@@ -210,13 +210,13 @@ export function TemplateSelectorModal({
                             style={{ backgroundColor: tmpl.accentColor }}
                           />
                           {tmpl.badge ? (
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 truncate max-w-[110px] shrink-0">
                               {tmpl.badge}
                             </span>
                           ) : null}
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {tmpl.isCustom && (
                             <button
                               type="button"
@@ -245,7 +245,7 @@ export function TemplateSelectorModal({
                       </div>
 
                       {/* Title & Description */}
-                      <h4 className="font-extrabold text-[#1B494E] text-base group-hover:text-[#F26522] transition-colors">
+                      <h4 className="font-extrabold text-[#1B494E] text-base group-hover:text-[#F26522] transition-colors truncate">
                         {tmpl.name}
                       </h4>
                       {tmpl.description ? (
@@ -283,15 +283,15 @@ export function TemplateSelectorModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="p-3.5 sm:p-5 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <p className="text-xs text-slate-500 flex items-center gap-1.5">
-            <Sparkles size={13} className="text-[#F26522]" />
+            <Sparkles size={13} className="text-[#F26522] shrink-0" />
             <span>You can change this template anytime before downloading.</span>
           </p>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition-colors cursor-pointer min-h-[40px] touch-manipulation flex items-center justify-center"
           >
             Close
           </button>
