@@ -5,6 +5,7 @@ import { TemplateDefinition, TemplateRenderProps, FlierItemBox, FlierImageSlot, 
 import { BMI_LOGO_DATA_URL } from "../../utils/templateLogos";
 import { FIXED_CONTACT } from "../../utils/constants";
 import { formatPropertyTypeLines } from "../../utils/extractor";
+import { wrapSvgText } from "../../utils/textWrap";
 
 const CANVAS_W = 1080;
 
@@ -151,6 +152,10 @@ export function BmiTemplate({
   locationText,
   docText,
   itemOffsets,
+  itemWidths,
+  itemWrap,
+  itemAlign,
+  itemFontSizes,
 }: TemplateRenderProps) {
   const getTransform = (id: string, base?: string) => {
     const off = itemOffsets?.[id];
@@ -171,9 +176,22 @@ export function BmiTemplate({
     data.features
   );
 
-  const locFontSize = locationText.length > 24 ? 19 : locationText.length > 18 ? 22 : 25;
-  const priceFontSize = rawPriceNaira.length > 10 ? 46 : rawPriceNaira.length > 7 ? 54 : 62;
-  const docFontSize = docText.length > 28 ? 18 : 22;
+  // Location wrapping & width
+  const locWidth = itemWidths?.["location"] || 412.696;
+  const isLocWrap = itemWrap?.["location"] !== false;
+  const locFontSize = itemFontSizes?.["location"] || (locationText.length > 24 ? 19 : locationText.length > 18 ? 22 : 25);
+  const locLines = isLocWrap ? wrapSvgText(locationText, locWidth - 70, locFontSize * 0.58) : [locationText];
+
+  // Documentation wrapping & width
+  const docWidth = itemWidths?.["documentation"] || 440.734;
+  const isDocWrap = itemWrap?.["documentation"] !== false;
+  const docFontSize = itemFontSizes?.["documentation"] || (docText.length > 28 ? 18 : 22);
+  const fullDocText = docText.startsWith("TITLE:") ? docText : `TITLE: ${docText}`;
+  const docLines = isDocWrap ? wrapSvgText(fullDocText, docWidth - 40, docFontSize * 0.58) : [fullDocText];
+
+  // Price box width & size
+  const priceWidth = itemWidths?.["priceNGN"] || 438;
+  const priceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 10 ? 46 : rawPriceNaira.length > 7 ? 54 : 62);
 
   return (
     <g>
@@ -405,16 +423,18 @@ export function BmiTemplate({
           transform={getTransform("documentation")}
           className="cursor-pointer"
         >
-          <path
-            opacity="0.85"
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d="M137.739 1125.45H578.473V1195.66H137.739V1125.45Z"
+          <rect
+            x="137.739"
+            y="1125.45"
+            width={docWidth}
+            height={docLines.length > 1 ? Math.max(70, 42 + docLines.length * (docFontSize + 4)) : 70}
+            rx="10"
             fill="#F7F7F7"
+            opacity="0.85"
           />
           <text
-            x="358"
-            y="1168"
+            x={137.739 + docWidth / 2}
+            y={docLines.length > 1 ? 1152 : 1168}
             textAnchor="middle"
             fontSize={docFontSize}
             fontWeight="900"
@@ -422,7 +442,11 @@ export function BmiTemplate({
             letterSpacing="2.5"
             className="font-montserrat"
           >
-            {docText.startsWith("TITLE:") ? docText : `TITLE: ${docText}`}
+            {docLines.map((line, lIdx) => (
+              <tspan key={lIdx} x={137.739 + docWidth / 2} dy={lIdx === 0 ? 0 : docFontSize + 4}>
+                {line}
+              </tspan>
+            ))}
           </text>
         </g>
 
@@ -434,12 +458,14 @@ export function BmiTemplate({
           transform={getTransform("location")}
           className="cursor-pointer"
         >
-          <path
-            opacity="0.82"
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d="M436 824H848.696C865.123 824 878.44 839.523 878.44 858.672V903.546C878.44 905.142 877.33 906.436 875.961 906.436H436V824Z"
+          <rect
+            x="436"
+            y="824"
+            width={locWidth}
+            height={locLines.length > 1 ? Math.max(82, 48 + locLines.length * (locFontSize + 4)) : 82}
+            rx="16"
             fill="#000000"
+            opacity="0.82"
           />
           <g transform="translate(450, 846)">
             <path
@@ -450,14 +476,18 @@ export function BmiTemplate({
           </g>
           <text
             x="495"
-            y="873"
+            y={locLines.length > 1 ? 852 : 873}
             fontSize={locFontSize}
             fontWeight="900"
             fill="#FFFFFF"
             letterSpacing="1.5"
             className="font-montserrat"
           >
-            {locationText}
+            {locLines.map((line, lIdx) => (
+              <tspan key={lIdx} x="495" dy={lIdx === 0 ? 0 : locFontSize + 4}>
+                {line}
+              </tspan>
+            ))}
           </text>
         </g>
 
@@ -469,12 +499,14 @@ export function BmiTemplate({
           transform={getTransform("priceNGN")}
           className="cursor-pointer"
         >
-          <path
-            opacity="0.96"
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d="M437 907H875.121C891.762 907 905.253 920.491 905.253 937.132V1013.37C905.253 1030.01 891.762 1043.5 875.121 1043.5H437V907Z"
+          <rect
+            x="437"
+            y="907"
+            width={priceWidth}
+            height="136"
+            rx="18"
             fill="#FFFFFF"
+            opacity="0.96"
           />
           {/* Vertical PRICE label */}
           <g transform="translate(458, 936)">
@@ -487,7 +519,7 @@ export function BmiTemplate({
           </g>
 
           <text
-            x="665"
+            x={437 + priceWidth / 2 + 10}
             y="995"
             textAnchor="middle"
             fontSize={priceFontSize}

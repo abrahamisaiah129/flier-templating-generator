@@ -3,6 +3,7 @@
 import React from "react";
 import { TemplateDefinition, TemplateRenderProps, FlierItemBox, FlierImageSlot, FlierTextSlot } from "./types";
 import { ENOSE_LOGO_DATA_URL } from "../../utils/templateLogos";
+import { wrapSvgText } from "../../utils/textWrap";
 
 const CANVAS_W = 1080;
 const CANVAS_H = 1350;
@@ -101,6 +102,10 @@ export function EnoseTemplate({
   fallbackColor,
   rawPriceNaira,
   itemOffsets,
+  itemWidths,
+  itemWrap,
+  itemAlign,
+  itemFontSizes,
 }: TemplateRenderProps) {
   const getTransform = (id: string, base?: string) => {
     const off = itemOffsets?.[id];
@@ -116,19 +121,13 @@ export function EnoseTemplate({
     return `translate(${off.dx}, ${off.dy})`;
   };
 
-  const enoseLocation = (() => {
-    const loc = (data.location || "VICTORIA ISLAND, LAGOS").toUpperCase();
-    const words = loc.split(" ");
-    if (words.length > 2) {
-      const mid = Math.ceil(words.length / 2);
-      return { line1: words.slice(0, mid).join(" "), line2: words.slice(mid).join(" ") };
-    }
-    return { line1: loc, line2: "" };
-  })();
+  const locRaw = (data.location || "VICTORIA ISLAND, LAGOS").toUpperCase();
+  const locWidth = itemWidths?.["location"] || 460;
+  const isLocWrap = itemWrap?.["location"] !== false;
+  const enoseLocFontSize = itemFontSizes?.["location"] || (locRaw.length > 20 ? 46 : 56);
+  const locLines = isLocWrap ? wrapSvgText(locRaw, locWidth, enoseLocFontSize * 0.58) : [locRaw];
 
-  const enoseLocFontSize =
-    (enoseLocation.line1.length > 18 || enoseLocation.line2.length > 18) ? 46 : 56;
-  const enosePriceFontSize = rawPriceNaira.length > 8 ? 60 : 74;
+  const enosePriceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 8 ? 60 : 74);
 
   return (
     <g>
@@ -313,28 +312,19 @@ export function EnoseTemplate({
         >
           <text
             x="525"
-            y="1115"
+            y={locLines.length > 1 ? 1115 - (locLines.length - 1) * (enoseLocFontSize + 4) * 0.5 : 1115}
             fontSize={enoseLocFontSize}
             fontWeight="800"
             fill="#FFF5ED"
             letterSpacing="1"
             className="font-montserrat"
           >
-            {enoseLocation.line1}
+            {locLines.map((line, lIdx) => (
+              <tspan key={lIdx} x="525" dy={lIdx === 0 ? 0 : enoseLocFontSize + 6}>
+                {line}
+              </tspan>
+            ))}
           </text>
-          {enoseLocation.line2 && (
-            <text
-              x="525"
-              y="1175"
-              fontSize={enoseLocFontSize}
-              fontWeight="800"
-              fill="#FFF5ED"
-              letterSpacing="1"
-              className="font-montserrat"
-            >
-              {enoseLocation.line2}
-            </text>
-          )}
         </g>
       </g>
     </g>

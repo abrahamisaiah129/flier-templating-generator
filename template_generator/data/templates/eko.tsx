@@ -4,6 +4,7 @@ import React from "react";
 import { TemplateDefinition, TemplateRenderProps, FlierItemBox, FlierImageSlot, FlierTextSlot } from "./types";
 import { EKO_LOGO_DATA_URL } from "../../utils/templateLogos";
 import { FIXED_CONTACT } from "../../utils/constants";
+import { wrapSvgText } from "../../utils/textWrap";
 
 const CANVAS_W = 1080;
 const CANVAS_H = 1350;
@@ -103,6 +104,10 @@ export function EkoTemplate({
   rawPriceNaira,
   bedroomNum,
   itemOffsets,
+  itemWidths,
+  itemWrap,
+  itemAlign,
+  itemFontSizes,
 }: TemplateRenderProps) {
   const getTransform = (id: string, base?: string) => {
     const off = itemOffsets?.[id];
@@ -118,6 +123,13 @@ export function EkoTemplate({
     return `translate(${off.dx}, ${off.dy})`;
   };
 
+  // Location wrapping & width
+  const locRaw = (data.location || "LEKKI PHASE 1").toUpperCase();
+  const locWidth = itemWidths?.["location"] || 370;
+  const isLocWrap = itemWrap?.["location"] !== false;
+  const locFontSize = itemFontSizes?.["location"] || 28;
+  const locLines = isLocWrap ? wrapSvgText(locRaw, locWidth, locFontSize * 0.58) : [locRaw];
+
   const ekoSpecLines = (() => {
     const line1 = `${bedroomNum} BEDROOM ${(data.propertyType || "DUPLEX").toUpperCase()}`;
     const feats = (data.features || []).filter(Boolean);
@@ -129,7 +141,7 @@ export function EkoTemplate({
     return [line1, "LUXURY FINISHES", "SERENE ENVIRONMENT"];
   })();
 
-  const ekoPriceFontSize = rawPriceNaira.length > 10 ? 46 : rawPriceNaira.length > 7 ? 56 : 68;
+  const ekoPriceFontSize = itemFontSizes?.["priceNGN"] || (rawPriceNaira.length > 10 ? 46 : rawPriceNaira.length > 7 ? 56 : 68);
 
   return (
     <g>
@@ -212,8 +224,8 @@ export function EkoTemplate({
       {/* Left Side: Location & Giant Bold Price */}
       <text
         x="126"
-        y="1042"
-        fontSize="28"
+        y={locLines.length > 1 ? 1042 - (locLines.length - 1) * (locFontSize + 4) : 1042}
+        fontSize={locFontSize}
         fontWeight="700"
         fill="#FFFFFF"
         letterSpacing="2"
@@ -222,7 +234,11 @@ export function EkoTemplate({
         data-flier-type="text"
         transform={getTransform("location")}
       >
-        {(data.location || "LEKKI PHASE 1").toUpperCase()}
+        {locLines.map((line, lIdx) => (
+          <tspan key={lIdx} x="126" dy={lIdx === 0 ? 0 : locFontSize + 4}>
+            {line}
+          </tspan>
+        ))}
       </text>
       <text
         x="126"

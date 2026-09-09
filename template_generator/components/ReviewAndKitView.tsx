@@ -18,9 +18,13 @@ import {
   Upload,
   RotateCcw,
   Move,
+  WrapText,
+  Type,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { PropertyData, AppSettings, UploadedImage, PropertyItem, TemplateId, CustomTemplateItem } from "../types/propkit";
-import { FlyerCanvas, svgToPngBlob } from "./FlyerCanvas";
+import { FlyerCanvas, svgToPngBlob, getTemplateItemBoxes } from "./FlyerCanvas";
 import { EMPTY_FIELD } from "../utils/constants";
 import { generateCaption } from "../utils/extractor";
 import { getStoredCustomTemplates } from "../utils/storage";
@@ -126,11 +130,74 @@ export function ReviewAndKitView({
   const [itemOffsetsMap, setItemOffsetsMap] = useState<Record<number, Record<string, { dx: number; dy: number }>>>({});
   const currentItemOffsets = itemOffsetsMap[safePropIndex] || {};
 
+  // Text box widths per property
+  const [itemWidthsMap, setItemWidthsMap] = useState<Record<number, Record<string, number>>>({});
+  const currentItemWidths = itemWidthsMap[safePropIndex] || {};
+
+  // Text wrapping per property (true = auto wrap, false = single line)
+  const [itemWrapMap, setItemWrapMap] = useState<Record<number, Record<string, boolean>>>({});
+  const currentItemWrap = itemWrapMap[safePropIndex] || {};
+
+  // Custom font sizes per property
+  const [itemFontSizesMap, setItemFontSizesMap] = useState<Record<number, Record<string, number>>>({});
+  const currentItemFontSizes = itemFontSizesMap[safePropIndex] || {};
+
   const handleItemOffsetsChange = (offsets: Record<string, { dx: number; dy: number }>) => {
     setItemOffsetsMap((prev) => ({
       ...prev,
       [safePropIndex]: offsets,
     }));
+  };
+
+  const handleItemWidthChange = (itemId: string, width: number) => {
+    setItemWidthsMap((prev) => ({
+      ...prev,
+      [safePropIndex]: {
+        ...(prev[safePropIndex] || {}),
+        [itemId]: width,
+      },
+    }));
+  };
+
+  const handleStepItemWidth = (itemId: string, delta: number) => {
+    const boxes = getTemplateItemBoxes(selectedTemplate, localImages.length > 1, localImages.length > 2);
+    const defaultWidth = boxes[itemId]?.width || 400;
+    const currentW = currentItemWidths[itemId] ?? defaultWidth;
+    const nextW = Math.max(120, Math.min(1040, currentW + delta));
+    handleItemWidthChange(itemId, nextW);
+  };
+
+  const handleToggleItemWrap = (itemId: string) => {
+    setItemWrapMap((prev) => {
+      const current = prev[safePropIndex] || {};
+      const isCurrentlyWrapped = current[itemId] !== false; // default is true
+      return {
+        ...prev,
+        [safePropIndex]: {
+          ...current,
+          [itemId]: !isCurrentlyWrapped,
+        },
+      };
+    });
+  };
+
+  const handleStepItemFontSize = (itemId: string, delta: number) => {
+    setItemFontSizesMap((prev) => {
+      const current = prev[safePropIndex] || {};
+      const currentSize = current[itemId] || (
+        itemId === "location" ? (selectedTemplate === "enose" ? 46 : 28) :
+        itemId === "priceNGN" ? 48 :
+        itemId === "documentation" ? 21 : 24
+      );
+      const nextSize = Math.max(12, Math.min(100, currentSize + delta));
+      return {
+        ...prev,
+        [safePropIndex]: {
+          ...current,
+          [itemId]: nextSize,
+        },
+      };
+    });
   };
 
   const handleResetActiveItemPosition = () => {
@@ -142,13 +209,75 @@ export function ReviewAndKitView({
     });
   };
 
+  const handleResetActiveItemFormatting = () => {
+    if (!selectedCanvasItemId) return;
+    setItemWidthsMap((prev) => {
+      const copy = { ...(prev[safePropIndex] || {}) };
+      delete copy[selectedCanvasItemId];
+      return { ...prev, [safePropIndex]: copy };
+    });
+    setItemWrapMap((prev) => {
+      const copy = { ...(prev[safePropIndex] || {}) };
+      delete copy[selectedCanvasItemId];
+      return { ...prev, [safePropIndex]: copy };
+    });
+    setItemFontSizesMap((prev) => {
+      const copy = { ...(prev[safePropIndex] || {}) };
+      delete copy[selectedCanvasItemId];
+      return { ...prev, [safePropIndex]: copy };
+    });
+  };
+
   const handleResetAllPositions = () => {
     setItemOffsetsMap((prev) => {
       const copy = { ...prev };
       delete copy[safePropIndex];
       return copy;
     });
+    setItemWidthsMap((prev) => {
+      const copy = { ...prev };
+      delete copy[safePropIndex];
+      return copy;
+    });
+    setItemWrapMap((prev) => {
+      const copy = { ...prev };
+      delete copy[safePropIndex];
+      return copy;
+    });
+    setItemFontSizesMap((prev) => {
+      const copy = { ...prev };
+      delete copy[safePropIndex];
+      return copy;
+    });
   };
+
+  const currentItemDefaultBox = useMemo(() => {
+    if (!selectedCanvasItemId) return null;
+    const boxes = getTemplateItemBoxes(selectedTemplate, localImages.length > 1, localImages.length > 2);
+    return boxes[selectedCanvasItemId] || null;
+  }, [selectedCanvasItemId, selectedTemplate, localImages.length]);
+
+  const activeItemWidth = selectedCanvasItemId
+    ? Math.round(currentItemWidths[selectedCanvasItemId] ?? currentItemDefaultBox?.width ?? 400)
+    : 400;
+
+  const isItemWrapActive = selectedCanvasItemId
+    ? currentItemWrap[selectedCanvasItemId] !== false
+    : true;
+
+  const activeItemFontSize = selectedCanvasItemId
+    ? (currentItemFontSizes[selectedCanvasItemId] || (
+        selectedCanvasItemId === "location" ? (selectedTemplate === "enose" ? 46 : 28) :
+        selectedCanvasItemId === "priceNGN" ? 48 :
+        selectedCanvasItemId === "documentation" ? 21 : 24
+      ))
+    : 24;
+
+  const hasCustomFormatting = Boolean(
+    (selectedCanvasItemId && currentItemWidths[selectedCanvasItemId] !== undefined) ||
+    (selectedCanvasItemId && currentItemWrap[selectedCanvasItemId] !== undefined) ||
+    (selectedCanvasItemId && currentItemFontSizes[selectedCanvasItemId] !== undefined)
+  );
 
   // Bound index safely within localImages range
   const safeActiveIndex =
@@ -1280,142 +1409,232 @@ export function ReviewAndKitView({
 
           {/* Interactive Canvas Element Inspector Bar */}
           {selectedCanvasItemId ? (
-            <div className="bg-[#1B494E] text-white p-3 rounded-xl shadow-md border border-teal-800 flex flex-wrap items-center justify-between gap-2.5 transition-all">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm">
-                  {selectedCanvasItemType === "image" ? "📷" : "✏️"}
-                </span>
-                <div>
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-teal-300">
-                    Selected Element
+            <div className="bg-[#1B494E] text-white p-3 rounded-xl shadow-md border border-teal-800 space-y-2.5 transition-all">
+              {/* Row 1: Item Info & Primary Element Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm">
+                    {selectedCanvasItemType === "image" ? "📷" : "✏️"}
+                  </span>
+                  <div>
+                    <div className="text-[9px] font-bold uppercase tracking-wider text-teal-300">
+                      Selected Element
+                    </div>
+                    <div className="text-xs font-black text-white">
+                      {getItemLabel(selectedCanvasItemId)}
+                    </div>
                   </div>
-                  <div className="text-xs font-black text-white">
-                    {getItemLabel(selectedCanvasItemId)}
-                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Image slot actions */}
+                  {selectedCanvasItemType === "image" && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageUploadTargetSlot(selectedCanvasItemId);
+                          fileInputRef.current?.click();
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-[#F26522] hover:bg-[#d95315] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-transform duration-120 active:scale-95"
+                      >
+                        <Upload size={13} />
+                        <span>Upload Photo</span>
+                      </button>
+
+                      {/* Quick photo assignment from localImages */}
+                      {localImages.length > 0 && selectedCanvasItemId !== "logo" && (
+                        <div className="flex items-center gap-1 bg-black/25 px-2 py-1 rounded-lg">
+                          <span className="text-[10px] text-teal-200 font-bold">Assign:</span>
+                          {localImages.map((img, qIdx) => (
+                            <button
+                              key={img.id || qIdx}
+                              type="button"
+                              onClick={() =>
+                                handleAssignExistingImageToSlot(
+                                  selectedCanvasItemId,
+                                  img.url,
+                                  img.name
+                                )
+                              }
+                              className="px-2 py-0.5 rounded bg-white/10 hover:bg-[#F26522] text-white text-[10px] font-bold transition-colors cursor-pointer"
+                              title={`Assign Photo ${qIdx + 1} (${img.name}) to this slot`}
+                            >
+                              Photo ${qIdx + 1}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {(selectedCanvasItemId === "image-secondary-0" || selectedCanvasItemId === "image-secondary-1") && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSecondarySlot(selectedCanvasItemId)}
+                          className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                          title="Clear photo from this container"
+                        >
+                          <Trash2 size={12} />
+                          <span>Clear</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Text slot inline quick editor & Focus button */}
+                  {selectedCanvasItemType === "text" && (
+                    <div className="flex items-center gap-2">
+                      {renderInlineQuickEditor(selectedCanvasItemId)}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (step !== "review") setStep("review");
+                          setTimeout(() => {
+                            const el = document.getElementById(
+                              `spec-field-${selectedCanvasItemId}`
+                            );
+                            el?.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+                            el?.focus();
+                          }, 100);
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-transform duration-120 active:scale-95"
+                      >
+                        <span>Focus in Form</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Drag repositioning badge & Reset button */}
+                  {selectedCanvasItemId && currentItemOffsets[selectedCanvasItemId] && (currentItemOffsets[selectedCanvasItemId].dx !== 0 || currentItemOffsets[selectedCanvasItemId].dy !== 0) && (
+                    <div className="flex items-center gap-1.5 bg-black/25 px-2.5 py-1 rounded-lg">
+                      <span className="text-[10px] text-teal-200 font-bold flex items-center gap-1">
+                        <Move size={11} />
+                        <span>
+                          {currentItemOffsets[selectedCanvasItemId].dx > 0 ? `+${currentItemOffsets[selectedCanvasItemId].dx}` : currentItemOffsets[selectedCanvasItemId].dx}px, {currentItemOffsets[selectedCanvasItemId].dy > 0 ? `+${currentItemOffsets[selectedCanvasItemId].dy}` : currentItemOffsets[selectedCanvasItemId].dy}px
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleResetActiveItemPosition}
+                        className="ml-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Reset element to original template position"
+                      >
+                        <RotateCcw size={10} />
+                        <span>Reset</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Deselect button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCanvasItemId(null);
+                      setSelectedCanvasItemType(null);
+                    }}
+                    className="p-1 rounded-md text-teal-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Deselect element"
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* Image slot actions */}
-                {selectedCanvasItemType === "image" && (
+              {/* Row 2: Dedicated Text Formatting Toolbar (Width, Wrap, Font Size) */}
+              {selectedCanvasItemType === "text" && (
+                <div className="pt-2.5 border-t border-teal-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImageUploadTargetSlot(selectedCanvasItemId);
-                        fileInputRef.current?.click();
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-[#F26522] hover:bg-[#d95315] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-transform duration-120 active:scale-95"
-                    >
-                      <Upload size={13} />
-                      <span>Upload Photo</span>
-                    </button>
-
-                    {/* Quick photo assignment from localImages */}
-                    {localImages.length > 0 && selectedCanvasItemId !== "logo" && (
-                      <div className="flex items-center gap-1 bg-black/25 px-2 py-1 rounded-lg">
-                        <span className="text-[10px] text-teal-200 font-bold">Assign:</span>
-                        {localImages.map((img, qIdx) => (
-                          <button
-                            key={img.id || qIdx}
-                            type="button"
-                            onClick={() =>
-                              handleAssignExistingImageToSlot(
-                                selectedCanvasItemId,
-                                img.url,
-                                img.name
-                              )
-                            }
-                            className="px-2 py-0.5 rounded bg-white/10 hover:bg-[#F26522] text-white text-[10px] font-bold transition-colors cursor-pointer"
-                            title={`Assign Photo ${qIdx + 1} (${img.name}) to this slot`}
-                          >
-                            Photo ${qIdx + 1}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {(selectedCanvasItemId === "image-secondary-0" || selectedCanvasItemId === "image-secondary-1") && (
+                    {/* Text Box Width Stepper & Indicator */}
+                    <div className="flex items-center bg-black/30 rounded-lg p-0.5 border border-white/10">
+                      <span className="text-[10px] font-bold text-teal-200 px-2 flex items-center gap-1">
+                        <span>Width:</span>
+                        <span className="font-mono text-white text-xs font-black">{activeItemWidth}px</span>
+                      </span>
                       <button
                         type="button"
-                        onClick={() => handleRemoveSecondarySlot(selectedCanvasItemId)}
-                        className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                        title="Clear photo from this container"
+                        onClick={() => handleStepItemWidth(selectedCanvasItemId, -20)}
+                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                        title="Narrow text box width (-20px)"
                       >
-                        <Trash2 size={12} />
-                        <span>Clear</span>
+                        <Minus size={12} />
                       </button>
-                    )}
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        onClick={() => handleStepItemWidth(selectedCanvasItemId, 20)}
+                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95"
+                        title="Widen text box width (+20px)"
+                      >
+                        <Plus size={12} />
+                      </button>
+                    </div>
 
-                {/* Text slot inline editor */}
-                {selectedCanvasItemType === "text" && (
-                  <div className="flex items-center gap-2">
-                    {renderInlineQuickEditor(selectedCanvasItemId)}
+                    {/* Text Wrap Toggle Button */}
                     <button
                       type="button"
-                      onClick={() => {
-                        if (step !== "review") setStep("review");
-                        setTimeout(() => {
-                          const el = document.getElementById(
-                            `spec-field-${selectedCanvasItemId}`
-                          );
-                          el?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "center",
-                          });
-                          el?.focus();
-                        }, 100);
-                      }}
-                      className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-transform duration-120 active:scale-95"
+                      onClick={() => handleToggleItemWrap(selectedCanvasItemId)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 ${
+                        isItemWrapActive
+                          ? "bg-emerald-600 hover:bg-emerald-500 text-white ring-1 ring-emerald-400"
+                          : "bg-white/10 hover:bg-white/20 text-slate-300"
+                      }`}
+                      title={
+                        isItemWrapActive
+                          ? "Text wrapping is ON (click to force single line)"
+                          : "Text wrapping is OFF (click to enable multi-line wrap)"
+                      }
                     >
-                      <span>Focus in Form</span>
+                      <WrapText size={13} />
+                      <span>Wrap: {isItemWrapActive ? "ON" : "OFF"}</span>
                     </button>
-                  </div>
-                )}
 
-                {/* Drag repositioning badge & Reset button */}
-                {selectedCanvasItemId && currentItemOffsets[selectedCanvasItemId] && (currentItemOffsets[selectedCanvasItemId].dx !== 0 || currentItemOffsets[selectedCanvasItemId].dy !== 0) && (
-                  <div className="flex items-center gap-1.5 bg-black/25 px-2.5 py-1 rounded-lg">
-                    <span className="text-[10px] text-teal-200 font-bold flex items-center gap-1">
-                      <Move size={11} />
-                      <span>
-                        {currentItemOffsets[selectedCanvasItemId].dx > 0 ? `+${currentItemOffsets[selectedCanvasItemId].dx}` : currentItemOffsets[selectedCanvasItemId].dx}px, {currentItemOffsets[selectedCanvasItemId].dy > 0 ? `+${currentItemOffsets[selectedCanvasItemId].dy}` : currentItemOffsets[selectedCanvasItemId].dy}px
+                    {/* Font Size Stepper */}
+                    <div className="flex items-center bg-black/30 rounded-lg p-0.5 border border-white/10">
+                      <span className="text-[10px] font-bold text-teal-200 px-2 flex items-center gap-1">
+                        <Type size={11} />
+                        <span className="font-mono text-white text-xs font-black">{activeItemFontSize}px</span>
                       </span>
-                    </span>
+                      <button
+                        type="button"
+                        onClick={() => handleStepItemFontSize(selectedCanvasItemId, -2)}
+                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                        title="Decrease font size (-2px)"
+                      >
+                        <Minus size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStepItemFontSize(selectedCanvasItemId, 2)}
+                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 active:scale-95"
+                        title="Increase font size (+2px)"
+                      >
+                        <Plus size={12} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Reset Box Formatting (Width, Wrap, Font Size) */}
+                  {hasCustomFormatting && (
                     <button
                       type="button"
-                      onClick={handleResetActiveItemPosition}
-                      className="ml-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                      title="Reset element to original template position"
+                      onClick={handleResetActiveItemFormatting}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-teal-100 hover:text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Reset text box width, wrapping, and font size to default"
                     >
-                      <RotateCcw size={10} />
-                      <span>Reset</span>
+                      <RotateCcw size={11} />
+                      <span>Reset Box</span>
                     </button>
-                  </div>
-                )}
-
-                {/* Deselect button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedCanvasItemId(null);
-                    setSelectedCanvasItemType(null);
-                  }}
-                  className="p-1 rounded-md text-teal-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Deselect element"
-                >
-                  ✕
-                </button>
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-orange-50/70 border border-orange-100 text-orange-950 text-[11px]">
               <span className="flex items-center gap-1.5 font-medium">
                 <span>💡</span>
                 <span>
-                  <strong>Interactive Canvas:</strong> Click & drag any text, badge, logo, or photo to reposition it. Click to edit in form or swap photos.
+                  <strong>Interactive Canvas:</strong> Click & drag any text, badge, logo, or photo to reposition it. Click text to adjust width, wrap & size with the toolbar or side handles.
                 </span>
               </span>
               {Object.keys(currentItemOffsets).length > 0 && (
@@ -1454,6 +1673,10 @@ export function ReviewAndKitView({
             itemOffsets={currentItemOffsets}
             onItemOffsetsChange={handleItemOffsetsChange}
             draggable={true}
+            itemWidths={currentItemWidths}
+            onItemWidthChange={handleItemWidthChange}
+            itemWrap={currentItemWrap}
+            itemFontSizes={currentItemFontSizes}
           />
         </div>
       </div>
@@ -1494,6 +1717,9 @@ export function ReviewAndKitView({
               templateId={selectedTemplate}
               customTemplate={currentSelectedCustomTemplate}
               itemOffsets={itemOffsetsMap[idx] || {}}
+              itemWidths={itemWidthsMap[idx] || {}}
+              itemWrap={itemWrapMap[idx] || {}}
+              itemFontSizes={itemFontSizesMap[idx] || {}}
               draggable={false}
             />
           </div>

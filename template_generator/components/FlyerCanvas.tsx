@@ -123,6 +123,11 @@ interface FlyerCanvasProps {
   itemOffsets?: Record<string, { dx: number; dy: number }>;
   onItemOffsetsChange?: (offsets: Record<string, { dx: number; dy: number }>) => void;
   draggable?: boolean;
+  itemWidths?: Record<string, number>;
+  onItemWidthChange?: (itemId: string, width: number) => void;
+  itemWrap?: Record<string, boolean>;
+  itemFontSizes?: Record<string, number>;
+  itemAlign?: Record<string, "left" | "center" | "right">;
 }
 
 export function FlyerCanvas({
@@ -141,6 +146,11 @@ export function FlyerCanvas({
   itemOffsets,
   onItemOffsetsChange,
   draggable = true,
+  itemWidths,
+  onItemWidthChange,
+  itemWrap,
+  itemFontSizes,
+  itemAlign,
 }: FlyerCanvasProps) {
   // Ingest image from URL parameters if primaryImage is not provided
   const resolvedPrimaryImage = (() => {
@@ -216,6 +226,47 @@ export function FlyerCanvas({
   // Local or controlled item offsets
   const [internalOffsets, setInternalOffsets] = React.useState<Record<string, { dx: number; dy: number }>>({});
   const effectiveOffsets = itemOffsets !== undefined ? itemOffsets : internalOffsets;
+
+  // Local or controlled item widths
+  const [internalWidths, setInternalWidths] = React.useState<Record<string, number>>({});
+  const effectiveWidths = itemWidths !== undefined ? itemWidths : internalWidths;
+
+  const handleWidthChange = (id: string, width: number) => {
+    setInternalWidths((prev) => ({ ...prev, [id]: width }));
+    onItemWidthChange?.(id, width);
+  };
+
+  const [isResizing, setIsResizing] = React.useState(false);
+  const resizeInfoRef = React.useRef<{
+    itemId: string;
+    side: "left" | "right";
+    startSvgX: number;
+    startWidth: number;
+  } | null>(null);
+
+  const handleResizePointerDown = (
+    e: React.PointerEvent,
+    itemId: string,
+    side: "left" | "right",
+    currentWidth: number
+  ) => {
+    e.stopPropagation();
+    const svgCoords = screenToSvgCoords(e.clientX, e.clientY);
+    if (!svgCoords) return;
+
+    resizeInfoRef.current = {
+      itemId,
+      side,
+      startSvgX: svgCoords.x,
+      startWidth: currentWidth,
+    };
+    setIsResizing(true);
+    try {
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    } catch {
+      // Ignored
+    }
+  };
 
   const [isDragging, setIsDragging] = React.useState(false);
   const dragInfoRef = React.useRef<{
@@ -296,6 +347,17 @@ export function FlyerCanvas({
   };
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (resizeInfoRef.current) {
+      const svgCoords = screenToSvgCoords(e.clientX, e.clientY);
+      if (!svgCoords) return;
+      const info = resizeInfoRef.current;
+      const deltaX = svgCoords.x - info.startSvgX;
+      let newWidth = info.side === "right" ? info.startWidth + deltaX : info.startWidth - deltaX;
+      newWidth = Math.max(120, Math.min(CANVAS_W - 40, Math.round(newWidth)));
+      handleWidthChange(info.itemId, newWidth);
+      return;
+    }
+
     if (!dragInfoRef.current) return;
     const info = dragInfoRef.current;
     const svgCoords = screenToSvgCoords(e.clientX, e.clientY);
@@ -315,8 +377,9 @@ export function FlyerCanvas({
     let newDy = info.startDy + deltaY;
 
     if (info.itemBox) {
+      const boxW = effectiveWidths[info.itemId] || info.itemBox.width;
       const minDx = -info.itemBox.x + 10;
-      const maxDx = CANVAS_W - (info.itemBox.x + info.itemBox.width) - 10;
+      const maxDx = CANVAS_W - (info.itemBox.x + boxW) - 10;
       newDx = Math.max(minDx, Math.min(maxDx, newDx));
 
       const minDy = -info.itemBox.y + 10;
@@ -334,6 +397,16 @@ export function FlyerCanvas({
   };
 
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (resizeInfoRef.current) {
+      try {
+        (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignored
+      }
+      resizeInfoRef.current = null;
+      setIsResizing(false);
+    }
+
     if (dragInfoRef.current) {
       try {
         (e.currentTarget as Element).releasePointerCapture(e.pointerId);
@@ -365,8 +438,14 @@ export function FlyerCanvas({
   const activeBox = useMemo(() => {
     if (!selectedItemId) return null;
     const boxes = getTemplateItemBoxes(templateId, hasSec1, hasSec2);
-    return boxes[selectedItemId] || null;
-  }, [selectedItemId, templateId, hasSec1, hasSec2]);
+    const box = boxes[selectedItemId];
+    if (!box) return null;
+    const customW = effectiveWidths[selectedItemId];
+    return {
+      ...box,
+      width: customW !== undefined ? customW : box.width,
+    };
+  }, [selectedItemId, templateId, hasSec1, hasSec2, effectiveWidths]);
 
   const activeOffset = selectedItemId ? effectiveOffsets[selectedItemId] || { dx: 0, dy: 0 } : { dx: 0, dy: 0 };
 
@@ -391,7 +470,7 @@ export function FlyerCanvas({
         width="100%"
         xmlns="http://www.w3.org/2000/svg"
         xmlnsXlink="http://www.w3.org/1999/xlink"
-        className={`block w-full h-auto select-none ${isDragging ? "cursor-grabbing" : "cursor-default"}`}
+        className={`block w-full h-auto select-none ${isDragging ? "cursor-grabbing" : isResizing ? "cursor-ew-resize" : "cursor-default"}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -449,15 +528,8 @@ export function FlyerCanvas({
             <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.2" />
           </filter>
 
-          <filter id="bmiLogoShadow" x="67.4648" y="-46.9986" width="393.538" height="236.453" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-            <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-            <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-            <feOffset dy="13.2282"/>
-            <feGaussianBlur stdDeviation="8.2676"/>
-            <feComposite in2="hardAlpha" operator="out"/>
-            <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/>
-            <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
-            <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+          <filter id="bmiLogoShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#000000" floodOpacity="0.3" />
           </filter>
 
           {/* BMI Gradients */}
@@ -476,8 +548,8 @@ export function FlyerCanvas({
           {/* Eko Gradients */}
           <linearGradient id="ekoBottomGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#000000" stopOpacity="0" />
-            <stop offset="30%" stopColor="#000000" stopOpacity="0.45" />
-            <stop offset="70%" stopColor="#000000" stopOpacity="0.9" />
+            <stop offset="25%" stopColor="#000000" stopOpacity="0.75" />
+            <stop offset="60%" stopColor="#000000" stopOpacity="0.96" />
             <stop offset="100%" stopColor="#000000" stopOpacity="1" />
           </linearGradient>
 
@@ -486,7 +558,7 @@ export function FlyerCanvas({
             <rect x="48" y="165" width="984" height="1135" rx="28" fill="white" />
           </clipPath>
 
-          <linearGradient id="enoseGrad" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="enoseWarmVignette" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#47290C" stopOpacity="0" />
             <stop offset="45%" stopColor="#47290C" stopOpacity="0.65" />
             <stop offset="85%" stopColor="#47290C" stopOpacity="0.95" />
@@ -510,6 +582,10 @@ export function FlyerCanvas({
             selectedItemId={selectedItemId}
             onSelectItem={onSelectItem}
             itemOffsets={effectiveOffsets}
+            itemWidths={effectiveWidths}
+            itemWrap={itemWrap}
+            itemFontSizes={itemFontSizes}
+            itemAlign={itemAlign}
           />
         )}
 
@@ -529,6 +605,10 @@ export function FlyerCanvas({
             selectedItemId={selectedItemId}
             onSelectItem={onSelectItem}
             itemOffsets={effectiveOffsets}
+            itemWidths={effectiveWidths}
+            itemWrap={itemWrap}
+            itemFontSizes={itemFontSizes}
+            itemAlign={itemAlign}
           />
         )}
 
@@ -548,6 +628,10 @@ export function FlyerCanvas({
             selectedItemId={selectedItemId}
             onSelectItem={onSelectItem}
             itemOffsets={effectiveOffsets}
+            itemWidths={effectiveWidths}
+            itemWrap={itemWrap}
+            itemFontSizes={itemFontSizes}
+            itemAlign={itemAlign}
           />
         )}
 
@@ -559,11 +643,12 @@ export function FlyerCanvas({
         {/* ON-CANVAS SELECTION OVERLAY & CONTROL HANDLES */}
         {activeBox && (
           <g
-            className="flier-selection-overlay pointer-events-none"
+            className="flier-selection-overlay"
             transform={activeOffset.dx || activeOffset.dy ? `translate(${activeOffset.dx}, ${activeOffset.dy})` : undefined}
           >
             {/* Outline Box */}
             <rect
+              className="pointer-events-none"
               x={activeBox.x - 4}
               y={activeBox.y - 4}
               width={activeBox.width + 8}
@@ -584,6 +669,7 @@ export function FlyerCanvas({
             ].map((handle, hIdx) => (
               <rect
                 key={hIdx}
+                className="pointer-events-none"
                 x={handle.cx - 7}
                 y={handle.cy - 7}
                 width="14"
@@ -594,14 +680,57 @@ export function FlyerCanvas({
                 rx="3"
               />
             ))}
-            {/* Floating Selection Label Pill */}
+
+            {/* Interactive Width Resize Handle (Interactive for text elements) */}
+            {activeBox.type === "text" && (
+              <g
+                className="cursor-ew-resize select-none"
+                onPointerDown={(e) =>
+                  handleResizePointerDown(e, activeBox.id, "right", activeBox.width)
+                }
+              >
+                {/* Generous touch/click hit area */}
+                <rect
+                  x={activeBox.x + activeBox.width + 4 - 8}
+                  y={activeBox.y + activeBox.height / 2 - 22}
+                  width="22"
+                  height="44"
+                  fill="transparent"
+                />
+                {/* Visual grab pill */}
+                <rect
+                  x={activeBox.x + activeBox.width + 4 - 5}
+                  y={activeBox.y + activeBox.height / 2 - 18}
+                  width="10"
+                  height="36"
+                  rx="5"
+                  fill="#F26522"
+                  stroke="#FFFFFF"
+                  strokeWidth="2.5"
+                  filter="drop-shadow(0 2px 8px rgba(0,0,0,0.35))"
+                />
+                {/* Visual grip bar inside */}
+                <line
+                  x1={activeBox.x + activeBox.width + 4}
+                  y1={activeBox.y + activeBox.height / 2 - 8}
+                  x2={activeBox.x + activeBox.width + 4}
+                  y2={activeBox.y + activeBox.height / 2 + 8}
+                  stroke="#FFFFFF"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </g>
+            )}
+
+            {/* Floating Selection Label Pill with real-time width display */}
             <g
+              className="pointer-events-none"
               transform={`translate(${Math.max(16, activeBox.x)}, ${Math.max(42, activeBox.y - 38)})`}
             >
               <rect
                 x="0"
                 y="0"
-                width={Math.max(140, activeBox.label.length * 10 + 50)}
+                width={Math.max(160, activeBox.label.length * 9 + 85)}
                 height="32"
                 rx="16"
                 fill="#F26522"
@@ -610,12 +739,12 @@ export function FlyerCanvas({
               <text
                 x="14"
                 y="21"
-                fontSize="14"
+                fontSize="13"
                 fontWeight="800"
                 fill="#FFFFFF"
                 className="font-montserrat"
               >
-                {activeBox.type === "image" ? "📷" : "✏️"} {activeBox.label}
+                {activeBox.type === "image" ? "📷" : "✏️"} {activeBox.label} · {Math.round(activeBox.width)}px
               </text>
             </g>
           </g>

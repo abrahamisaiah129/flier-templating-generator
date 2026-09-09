@@ -41,6 +41,10 @@ export interface TemplateRenderProps {
   selectedItemId?: string | null;
   onSelectItem?: (itemId: string | null, itemType: "text" | "image") => void;
   itemOffsets?: Record<string, { dx: number; dy: number }>;
+  itemWidths?: Record<string, number>;
+  itemWrap?: Record<string, boolean>;
+  itemAlign?: Record<string, "left" | "center" | "right">;
+  itemFontSizes?: Record<string, number>;
 }
 
 export interface TemplateDefinition {
